@@ -30,7 +30,9 @@ from models import (
 # ------------------------------------------------------------------------------
 def run_ameriflux_us_ne1_benchmark() -> Dict[str, Any]:
     print("=" * 78)
-    print("RUNNING HISTORICAL VALIDATION: AMERIFLUX TOWER US-Ne1 (2012 FLASH DROUGHT)")
+    print("RUNNING LITERATURE-ALIGNED SIMULATION BENCHMARK: US-Ne1 2012 DROUGHT ANALOG")
+    print("Methodology: Synthetic biophysical simulation modeling stomatal closure dynamics")
+    print("Reference: Otkin et al. (2016) BAMS & Anderson et al. (2013) J. Hydrometeorology")
     print("=" * 78)
 
     doy_range = np.arange(150, 221)  # DOY 150 (May 29) to DOY 220 (Aug 7)
@@ -153,15 +155,16 @@ def run_ameriflux_us_ne1_benchmark() -> Dict[str, Any]:
     assert lead_time_days == 14, f"Lead time was {lead_time_days} days; expected exactly 14 days!"
 
     return {
-        "site_id": "AmeriFlux_US-Ne1",
-        "crop": "Irrigated Continuous Maize",
-        "year": 2012,
+        "site_id": "AmeriFlux_US-Ne1_Literature_Analog",
+        "crop": "Irrigated Continuous Maize (2012 Flash Drought Dynamics)",
+        "simulation_type": "biophysical_sensitivity_benchmark",
         "r_squared": float(round(r_squared, 4)),
         "rmse_mm_day": float(round(rmse, 3)),
         "mae_mm_day": float(round(mae, 3)),
         "shock_doy": int(shock_day_detected),
         "ndvi_doy": int(ndvi_drop_day),
-        "early_warning_lead_time_days": int(lead_time_days)
+        "modeled_lead_time_days": int(lead_time_days),
+        "note": "Simulated sensitivity benchmark modeling stomatal closure vs chlorophyll decay lag."
     }
 
 # ------------------------------------------------------------------------------

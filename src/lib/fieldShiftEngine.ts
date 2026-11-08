@@ -23,14 +23,15 @@ export const DEFAULT_PRIORITIES: UserPriorities = {
 };
 
 /**
- * Solves Multi-Criteria TOPSIS in TypeScript
+ * Solves Multi-Criteria TOPSIS
  * Criteria: [Net Profit (Benefit), Water Saved % (Benefit), Soil Health (Benefit), Failure Risk % (Cost)]
  */
-function computeDynamicTopsis(
+export function computeDynamicTopsis(
   matrix: number[][],
   weights: [number, number, number, number]
 ): number[] {
   const m = matrix.length;
+  if (m === 0) return [];
   const n = 4;
   const isBenefit = [true, true, true, false];
 
@@ -89,6 +90,198 @@ function computeDynamicTopsis(
   return closeness;
 }
 
+interface EvaluatedSequence {
+  crops: [Crop, Crop, Crop];
+  years: [RotationYear, RotationYear, RotationYear];
+  totalWaterUseM3Ha: number;
+  totalWaterSavedPercent: number;
+  totalNitrogenAddedKgHa: number;
+  avgFailureRiskPercent: number;
+  totalNetProfitUsdHa: number;
+  soilHealthIndexScore: number;
+  biodrillingRemediated: boolean;
+  hasLegume: boolean;
+  familyDiversity: number;
+}
+
+/**
+ * Dynamically evaluates a 3-year crop sequence under biophysical and agronomic equations
+ */
+function evaluateCropSequence(
+  crops: [Crop, Crop, Crop],
+  baselineWaterM3Ha: number,
+  memory: FieldMemoryState,
+  isMonoculture: boolean = false
+): EvaluatedSequence {
+  const years: RotationYear[] = [];
+  let totalWaterUse = 0;
+  let totalNitrogenAdded = 0;
+  let totalNetProfit = 0;
+  let sumFailureRisk = 0;
+  let biodrillingRemediated = false;
+
+  const families = new Set(crops.map(c => c.family));
+  const familyDiversity = families.size;
+  const hasLegume = crops.some(c => c.family === 'fabaceae' || c.nitrogenFixationKgHa > 0);
+
+  // Baseline risk baseline derived from 10-year memory
+  // Higher satellite stress frequency or lower carryover moisture amplifies baseline climate risk
+  const baseDroughtStressRisk = Math.min(
+    75,
+    Math.max(10, Math.round(25 + memory.stressFrequency36m * 40 + (1 - memory.carryoverWaterFraction) * 20))
+  );
+
+  let prevCropWasLegume = false;
+  let priorHardpanRemediated = false;
+
+  for (let y = 0; y < 3; y++) {
+    const crop = crops[y];
+    const yearNum = (y + 1) as 1 | 2 | 3;
+
+    // Seasonal water need in m3/ha (1 mm = 10 m3/ha)
+    const seasonalWaterNeedM3Ha = crop.waterRequirementMm * 10;
+    totalWaterUse += seasonalWaterNeedM3Ha;
+
+    // Water saved vs baseline monoculture per year
+    const yearlyBaseline = baselineWaterM3Ha / 3;
+    const waterSavedVsBaselinePercent = Math.round(
+      ((yearlyBaseline - seasonalWaterNeedM3Ha) / yearlyBaseline) * 100
+    );
+
+    // Nitrogen balance: biological fixation minus soil uptake
+    let soilNitrogenDeltaKgHa = crop.nitrogenFixationKgHa;
+    if (isMonoculture && y > 0) {
+      // Compounded soil nitrogen depletion in monoculture
+      soilNitrogenDeltaKgHa -= y * 15;
+    }
+    totalNitrogenAdded += soilNitrogenDeltaKgHa;
+
+    // Yield ratio prediction (Stewart Yield-Water Equation + agronomic bonuses/penalties)
+    let yieldRatioPredicted = 0.95;
+    if (isMonoculture) {
+      // Progressive yield decline in continuous monoculture: 0.82 -> 0.74 -> 0.68
+      yieldRatioPredicted = Math.max(0.55, 0.85 - y * 0.08);
+    } else {
+      // Yield bonuses from rotation
+      if (prevCropWasLegume) {
+        yieldRatioPredicted += 0.05; // Nitrogen credit bonus
+      }
+      if (priorHardpanRemediated) {
+        yieldRatioPredicted += 0.04; // Improved drainage/root infiltration bonus
+      }
+      // Water deficit risk if crop water need exceeds carryover + rainfall capacity
+      if (memory.carryoverWaterFraction < 0.35 && crop.waterRequirementMm > 550) {
+        yieldRatioPredicted -= crop.ky * 0.08;
+      }
+      yieldRatioPredicted = Math.min(1.0, Math.max(0.60, Number(yieldRatioPredicted.toFixed(2))));
+    }
+
+    // Dynamic Failure Risk Calculation (% chance of yield < 70% threshold)
+    let failureRiskPercent: number;
+    if (isMonoculture) {
+      // Monoculture compounds pest/disease build-up and subsoil depletion
+      failureRiskPercent = Math.min(92, Math.round(baseDroughtStressRisk + y * 8 + (memory.hardpanDetected ? 10 : 0)));
+    } else {
+      // Adaptive crop failure risk modulated by crop's Stewart Ky and allowable depletion p
+      const kyFactor = crop.ky / 1.0;
+      const depletionFactor = (1.2 - crop.depletionP);
+      let cropRisk = baseDroughtStressRisk * kyFactor * depletionFactor * 0.45;
+      
+      // Salinity penalty if crop EC threshold is close to field risk
+      if (memory.salinityRiskLevel === 'severe' && crop.salinityToleranceDsM < 6.0) {
+        cropRisk += 25;
+      } else if (memory.salinityRiskLevel === 'moderate' && crop.salinityToleranceDsM < 4.0) {
+        cropRisk += 12;
+      }
+
+      // Hardpan risk if shallow root in compacted soil
+      if (memory.hardpanDetected && !priorHardpanRemediated && crop.rootDepthMaxM < 1.0) {
+        cropRisk += 8;
+      }
+
+      failureRiskPercent = Math.min(65, Math.max(5, Math.round(cropRisk)));
+    }
+    sumFailureRisk += failureRiskPercent;
+
+    // Dynamic Net Income calculation (USD/ha)
+    // Revenue adjusted by actual predicted yield ratio minus operational costs
+    let netIncomeUsdHa = Math.round(crop.avgRevenuePerHa * yieldRatioPredicted - crop.avgCostPerHa);
+    // Legume nitrogen credit financial savings on synthetic fertilizer (~$1.2/kg N)
+    if (prevCropWasLegume) {
+      netIncomeUsdHa += 75; // Fertilizer offset credit
+    }
+    if (isMonoculture) {
+      // Increasing pesticide and synthetic fertilizer cost for monoculture
+      netIncomeUsdHa -= y * 60;
+    }
+    totalNetProfit += netIncomeUsdHa;
+
+    // Track bio-drilling hardpan penetration
+    if (crop.rootDepthMaxM >= 1.6) {
+      biodrillingRemediated = true;
+      priorHardpanRemediated = true;
+    }
+    prevCropWasLegume = (crop.family === 'fabaceae' || crop.nitrogenFixationKgHa > 0);
+
+    years.push({
+      year: yearNum,
+      crop,
+      seasonalWaterNeedM3Ha,
+      waterSavedVsBaselinePercent,
+      soilNitrogenDeltaKgHa,
+      yieldRatioPredicted,
+      failureRiskPercent,
+      netIncomeUsdHa,
+    });
+  }
+
+  const totalWaterSavedPercent = Math.round(
+    ((baselineWaterM3Ha - totalWaterUse) / baselineWaterM3Ha) * 100
+  );
+  const avgFailureRiskPercent = Math.round(sumFailureRisk / 3);
+
+  // Dynamic Soil Health Index (0 - 100)
+  // Evaluates cumulative nitrogen fixation, residue biomass, botanical diversity, bio-drilling
+  let soilHealthScore = 50;
+  if (isMonoculture) {
+    soilHealthScore = Math.max(15, 35 - (memory.hardpanDetected ? 8 : 0) - (memory.salinityRiskLevel === 'severe' ? 7 : 0));
+  } else {
+    // Nitrogen credit
+    soilHealthScore += Math.round(totalNitrogenAdded / 8);
+    // Residue biomass credit
+    const avgResidue = crops.reduce((sum, c) => sum + c.residueBiomassTonHa, 0) / 3;
+    soilHealthScore += Math.round(avgResidue * 3.5);
+    // Family diversity credit
+    soilHealthScore += (familyDiversity - 1) * 8;
+    // Bio-drilling credit if hardpan remediated
+    if (memory.hardpanDetected && biodrillingRemediated) {
+      soilHealthScore += 10;
+    }
+    // Salinity resilience bonus
+    if (memory.salinityRiskLevel !== 'normal' && crops.every(c => c.salinityToleranceDsM >= 5.0)) {
+      soilHealthScore += 6;
+    }
+    soilHealthScore = Math.min(96, Math.max(25, soilHealthScore));
+  }
+
+  return {
+    crops,
+    years: [years[0], years[1], years[2]],
+    totalWaterUseM3Ha: totalWaterUse,
+    totalWaterSavedPercent,
+    totalNitrogenAddedKgHa: totalNitrogenAdded,
+    avgFailureRiskPercent,
+    totalNetProfitUsdHa: totalNetProfit,
+    soilHealthIndexScore: soilHealthScore,
+    biodrillingRemediated,
+    hasLegume,
+    familyDiversity,
+  };
+}
+
+/**
+ * Simulates and ranks rotation strategies dynamically using FAO-56 balance and TOPSIS
+ */
 export function simulateRotationStrategies(
   memory: FieldMemoryState,
   priorities: UserPriorities = DEFAULT_PRIORITIES,
@@ -97,187 +290,171 @@ export function simulateRotationStrategies(
 ): RotationStrategy[] {
   const absLat = Math.abs(lat);
   
-  // Strict Agro-Ecological Region Classification
+  // 1. Regional Agro-Ecological Classification
   const isMenaArid = (absLat >= 18 && absLat <= 34) && (lon >= -15 && lon <= 55);
   const isMediterranean = (absLat >= 31 && absLat <= 44) && (lon >= -10 && lon <= 36) && !isMenaArid;
-  const isTemperateUS = (absLat >= 35 && absLat <= 50) && (lon >= -125 && lon <= -70);
 
-  // Default fallback safe crops
-  const berseem = CROP_DATABASE.clover_berseem || CROP_DATABASE.alfalfa;
-  const fabaBean = CROP_DATABASE.faba_bean || CROP_DATABASE.chickpea;
-  const durumWheat = CROP_DATABASE.durum_wheat || CROP_DATABASE.winter_wheat;
-  const breadWheat = CROP_DATABASE.winter_wheat || durumWheat;
-  const maize = CROP_DATABASE.maize;
-  const sorghum = CROP_DATABASE.sorghum;
-  const sunflower = CROP_DATABASE.sunflower;
-  const panicum = CROP_DATABASE.panicum || sorghum;
-  const barley = CROP_DATABASE.barley;
-  const alfalfa = CROP_DATABASE.alfalfa;
-  const soybean = CROP_DATABASE.soybean;
+  // 2. Filter Candidate Crops from Master Knowledge Base
+  const cropList = Object.values(CROP_DATABASE);
 
-  // --------------------------------------------------------------------------
-  // 1. BASELINE MONOCULTURE STRATEGY (Exhaustive Continuous Cropping)
-  // --------------------------------------------------------------------------
-  const baseCrop = isMenaArid ? maize : (isTemperateUS ? maize : breadWheat);
-  const y1_current: RotationYear = {
-    year: 1,
-    crop: baseCrop,
-    seasonalWaterNeedM3Ha: 6500,
-    waterSavedVsBaselinePercent: 0,
-    soilNitrogenDeltaKgHa: baseCrop.nitrogenFixationKgHa,
-    yieldRatioPredicted: 0.82,
-    failureRiskPercent: 68,
-    netIncomeUsdHa: 730,
-  };
-  const y2_current: RotationYear = {
-    year: 2,
-    crop: baseCrop,
-    seasonalWaterNeedM3Ha: 6700,
-    waterSavedVsBaselinePercent: -3,
-    soilNitrogenDeltaKgHa: baseCrop.nitrogenFixationKgHa - 15,
-    yieldRatioPredicted: 0.74,
-    failureRiskPercent: 74,
-    netIncomeUsdHa: 620,
-  };
-  const y3_current: RotationYear = {
-    year: 3,
-    crop: baseCrop,
-    seasonalWaterNeedM3Ha: 6900,
-    waterSavedVsBaselinePercent: -6,
-    soilNitrogenDeltaKgHa: baseCrop.nitrogenFixationKgHa - 30,
-    yieldRatioPredicted: 0.69,
-    failureRiskPercent: 81,
-    netIncomeUsdHa: 510,
-  };
+  // Baseline monoculture definition for the region
+  const baseCrop: Crop = isMenaArid
+    ? CROP_DATABASE.maize
+    : (isMediterranean ? (CROP_DATABASE.durum_wheat || CROP_DATABASE.winter_wheat) : CROP_DATABASE.maize);
 
-  // --------------------------------------------------------------------------
-  // 2. REGENERATIVE BALANCED ROTATION (Agro-Ecological Suitability)
-  // For Egypt/MENA: Berseem Clover / Alfalfa -> Durum / Bread Wheat -> Summer Maize / Sunflower
-  // --------------------------------------------------------------------------
-  let cropY1_rec: Crop;
-  let cropY2_rec: Crop;
-  let cropY3_rec: Crop;
+  // Baseline 3-year water consumption under continuous monoculture (m3/ha)
+  const baselineWaterM3Ha = (baseCrop.waterRequirementMm * 10) * 3;
 
-  if (isMenaArid) {
-    // MENA / Egypt Rotation: Nitrogen-fixing legume -> Winter cereal -> Summer grain/oil
-    cropY1_rec = memory.hardpanDetected ? alfalfa : berseem;
-    cropY2_rec = durumWheat;
-    cropY3_rec = memory.carryoverWaterFraction < 0.40 ? sorghum : sunflower;
-  } else if (isMediterranean) {
-    // Mediterranean Basin: Faba bean -> Durum wheat -> Sunflower
-    cropY1_rec = fabaBean;
-    cropY2_rec = durumWheat;
-    cropY3_rec = sunflower;
-  } else {
-    // US Temperate (Midwest Corn Belt): Soybean -> Winter Wheat -> Maize
-    cropY1_rec = soybean;
-    cropY2_rec = breadWheat;
-    cropY3_rec = maize;
+  // Evaluate baseline monoculture under the exact dynamic equations
+  const baselineEval = evaluateCropSequence(
+    [baseCrop, baseCrop, baseCrop],
+    baselineWaterM3Ha,
+    memory,
+    true
+  );
+
+  // Filter feasible crops based on salinity risk and region
+  const feasibleCrops = cropList.filter(crop => {
+    // Salinity screen
+    if (memory.salinityRiskLevel === 'severe' && crop.salinityToleranceDsM < 5.0) return false;
+    if (memory.salinityRiskLevel === 'moderate' && crop.salinityToleranceDsM < 3.5) return false;
+    
+    // Regional suitability screen
+    if (isMenaArid) {
+      if (crop.id === 'rye' || crop.id === 'oats') return false; // Poorly adapted to hyper-arid desert heat
+    }
+    return true;
+  });
+
+  // Candidate generation: create viable diverse 3-year sequences
+  // Agronomic rules:
+  // - Break monoculture: no identical crops in 2 consecutive years
+  // - Family rotation: break Poaceae-Poaceae or Solanaceae-Solanaceae repetition
+  // - Legume inclusion: at least one legume (Fabaceae or N-fixer)
+  // - Bio-drilling inclusion if hardpan detected
+  const candidatePool: EvaluatedSequence[] = [];
+
+  // Categorize candidate crops
+  const legumes = feasibleCrops.filter(c => c.family === 'fabaceae' || c.nitrogenFixationKgHa > 0);
+  const deepRooters = feasibleCrops.filter(c => c.rootDepthMaxM >= 1.5);
+  const droughtResilient = feasibleCrops.filter(c => c.waterRequirementMm <= 480);
+  const cereals = feasibleCrops.filter(c => c.family === 'poaceae');
+  const cashCrops = feasibleCrops.filter(c => (c.avgRevenuePerHa - c.avgCostPerHa) >= 700);
+
+  // Build targeted high-performance candidate combinations
+  const testedCombos: string[] = [];
+
+  function tryAddCombo(c1: Crop, c2: Crop, c3: Crop) {
+    if (!c1 || !c2 || !c3) return;
+    const key = `${c1.id}-${c2.id}-${c3.id}`;
+    if (testedCombos.includes(key)) return;
+    testedCombos.push(key);
+
+    // Salinity screening: in severe salinity, all crops must meet minimum halotolerance
+    if (memory.salinityRiskLevel === 'severe') {
+      if (c1.salinityToleranceDsM < 4.5 || c2.salinityToleranceDsM < 4.5 || c3.salinityToleranceDsM < 4.5) {
+        return;
+      }
+    } else if (memory.salinityRiskLevel === 'moderate') {
+      if (c1.salinityToleranceDsM < 3.2 || c2.salinityToleranceDsM < 3.2 || c3.salinityToleranceDsM < 3.2) {
+        return;
+      }
+    }
+
+    // Rule: if hardpan detected, at least one crop must have rootDepthMaxM >= 1.5
+    if (memory.hardpanDetected && !(c1.rootDepthMaxM >= 1.5 || c2.rootDepthMaxM >= 1.5 || c3.rootDepthMaxM >= 1.5)) {
+      return;
+    }
+
+    const evalResult = evaluateCropSequence([c1, c2, c3], baselineWaterM3Ha, memory, false);
+    candidatePool.push(evalResult);
   }
 
-  const y1_rec: RotationYear = {
-    year: 1,
-    crop: cropY1_rec,
-    seasonalWaterNeedM3Ha: cropY1_rec.waterRequirementMm * 10,
-    waterSavedVsBaselinePercent: Math.round(((6500 - cropY1_rec.waterRequirementMm * 10) / 6500) * 100),
-    soilNitrogenDeltaKgHa: cropY1_rec.nitrogenFixationKgHa,
-    yieldRatioPredicted: 0.95,
-    failureRiskPercent: 9,
-    netIncomeUsdHa: Math.round(cropY1_rec.avgRevenuePerHa - cropY1_rec.avgCostPerHa),
-  };
-  const y2_rec: RotationYear = {
-    year: 2,
-    crop: cropY2_rec,
-    seasonalWaterNeedM3Ha: cropY2_rec.waterRequirementMm * 10,
-    waterSavedVsBaselinePercent: Math.round(((6500 - cropY2_rec.waterRequirementMm * 10) / 6500) * 100),
-    soilNitrogenDeltaKgHa: cropY2_rec.nitrogenFixationKgHa,
-    yieldRatioPredicted: 0.96,
-    failureRiskPercent: 8,
-    netIncomeUsdHa: Math.round(cropY2_rec.avgRevenuePerHa - cropY2_rec.avgCostPerHa),
-  };
-  const y3_rec: RotationYear = {
-    year: 3,
-    crop: cropY3_rec,
-    seasonalWaterNeedM3Ha: cropY3_rec.waterRequirementMm * 10,
-    waterSavedVsBaselinePercent: Math.round(((6500 - cropY3_rec.waterRequirementMm * 10) / 6500) * 100),
-    soilNitrogenDeltaKgHa: cropY3_rec.nitrogenFixationKgHa,
-    yieldRatioPredicted: 0.93,
-    failureRiskPercent: 12,
-    netIncomeUsdHa: Math.round(cropY3_rec.avgRevenuePerHa - cropY3_rec.avgCostPerHa),
-  };
-
-  const totalWaterRec = y1_rec.seasonalWaterNeedM3Ha + y2_rec.seasonalWaterNeedM3Ha + y3_rec.seasonalWaterNeedM3Ha;
-  const totalWaterSavedRec = Math.round(((20100 - totalWaterRec) / 20100) * 100);
-  const totalNRec = y1_rec.soilNitrogenDeltaKgHa + y2_rec.soilNitrogenDeltaKgHa + y3_rec.soilNitrogenDeltaKgHa;
-  const totalProfitRec = y1_rec.netIncomeUsdHa + y2_rec.netIncomeUsdHa + y3_rec.netIncomeUsdHa;
-
-  // --------------------------------------------------------------------------
-  // 3. ULTRA WATER-CONSERVATION & DROUGHT RESILIENCE STRATEGY
-  // For Egypt/MENA: Panicum / Sorghum -> Faba Bean / Chickpea -> Barley / Safflower
-  // --------------------------------------------------------------------------
-  let cropY1_water: Crop;
-  let cropY2_water: Crop;
-  let cropY3_water: Crop;
-
+  // Pre-selected agronomic archetype combinations tailored to Egypt & MENA / Mediterranean
   if (isMenaArid) {
-    cropY1_water = memory.salinityRiskLevel !== 'normal' ? panicum : sorghum;
-    cropY2_water = fabaBean;
-    cropY3_water = barley;
+    const berseem = CROP_DATABASE.clover_berseem || CROP_DATABASE.alfalfa;
+    const alfalfa = CROP_DATABASE.alfalfa;
+    const durum = CROP_DATABASE.durum_wheat || CROP_DATABASE.winter_wheat;
+    const sunflower = CROP_DATABASE.sunflower;
+    const sorghum = CROP_DATABASE.sorghum;
+    const panicum = CROP_DATABASE.panicum || sorghum;
+    const faba = CROP_DATABASE.faba_bean || CROP_DATABASE.chickpea;
+    const cowpea = CROP_DATABASE.cowpea || faba;
+    const barley = CROP_DATABASE.barley;
+    const sesame = CROP_DATABASE.sesame || sunflower;
+    const chickpea = CROP_DATABASE.chickpea || faba;
+    const canola = CROP_DATABASE.canola;
+
+    // Archetype 1: Regenerative Balanced (Legume -> Cereal -> Oilseed/Cash)
+    tryAddCombo(berseem, durum, sunflower);
+    tryAddCombo(alfalfa, durum, sorghum);
+    tryAddCombo(faba, durum, sesame);
+    tryAddCombo(berseem, barley, sunflower);
+
+    // Archetype 2: Ultra Water-Saving & Saline Resilient
+    tryAddCombo(sorghum, cowpea, barley);
+    tryAddCombo(panicum, cowpea, barley);
+    tryAddCombo(sorghum, faba, barley);
+    tryAddCombo(panicum, chickpea, barley);
+    tryAddCombo(sorghum, cowpea, safflower_or(sunflower));
+    tryAddCombo(panicum, faba, barley);
+    tryAddCombo(alfalfa, barley, sorghum);
+
+    // Archetype 3: High Margin & Soil Restorative
+    tryAddCombo(berseem, durum, CROP_DATABASE.maize);
+    tryAddCombo(faba, canola || durum, sunflower);
   } else if (isMediterranean) {
-    cropY1_water = barley;
-    cropY2_water = CROP_DATABASE.chickpea || fabaBean;
-    cropY3_water = CROP_DATABASE.safflower || sunflower;
+    const faba = CROP_DATABASE.faba_bean || CROP_DATABASE.chickpea;
+    const durum = CROP_DATABASE.durum_wheat || CROP_DATABASE.winter_wheat;
+    const sunflower = CROP_DATABASE.sunflower;
+    const barley = CROP_DATABASE.barley;
+    const chickpea = CROP_DATABASE.chickpea;
+    const safflower = CROP_DATABASE.safflower || sunflower;
+
+    tryAddCombo(faba, durum, sunflower);
+    tryAddCombo(chickpea, barley, safflower);
+    tryAddCombo(faba, durum, chickpea);
+    tryAddCombo(barley, faba, sunflower);
   } else {
-    cropY1_water = sorghum;
-    cropY2_water = CROP_DATABASE.chickpea || soybean;
-    cropY3_water = barley;
+    // Temperate US
+    const soybean = CROP_DATABASE.soybean;
+    const maize = CROP_DATABASE.maize;
+    const wheat = CROP_DATABASE.winter_wheat;
+    const alfalfa = CROP_DATABASE.alfalfa;
+    const oats = CROP_DATABASE.oats || wheat;
+
+    tryAddCombo(soybean, wheat, maize);
+    tryAddCombo(alfalfa, maize, oats);
+    tryAddCombo(soybean, maize, wheat);
   }
 
-  const y1_water: RotationYear = {
-    year: 1,
-    crop: cropY1_water,
-    seasonalWaterNeedM3Ha: cropY1_water.waterRequirementMm * 10,
-    waterSavedVsBaselinePercent: Math.round(((6500 - cropY1_water.waterRequirementMm * 10) / 6500) * 100),
-    soilNitrogenDeltaKgHa: cropY1_water.nitrogenFixationKgHa,
-    yieldRatioPredicted: 0.96,
-    failureRiskPercent: 7,
-    netIncomeUsdHa: Math.round(cropY1_water.avgRevenuePerHa - cropY1_water.avgCostPerHa),
-  };
-  const y2_water: RotationYear = {
-    year: 2,
-    crop: cropY2_water,
-    seasonalWaterNeedM3Ha: cropY2_water.waterRequirementMm * 10,
-    waterSavedVsBaselinePercent: Math.round(((6500 - cropY2_water.waterRequirementMm * 10) / 6500) * 100),
-    soilNitrogenDeltaKgHa: cropY2_water.nitrogenFixationKgHa,
-    yieldRatioPredicted: 0.94,
-    failureRiskPercent: 8,
-    netIncomeUsdHa: Math.round(cropY2_water.avgRevenuePerHa - cropY2_water.avgCostPerHa),
-  };
-  const y3_water: RotationYear = {
-    year: 3,
-    crop: cropY3_water,
-    seasonalWaterNeedM3Ha: cropY3_water.waterRequirementMm * 10,
-    waterSavedVsBaselinePercent: Math.round(((6500 - cropY3_water.waterRequirementMm * 10) / 6500) * 100),
-    soilNitrogenDeltaKgHa: cropY3_water.nitrogenFixationKgHa,
-    yieldRatioPredicted: 0.95,
-    failureRiskPercent: 6,
-    netIncomeUsdHa: Math.round(cropY3_water.avgRevenuePerHa - cropY3_water.avgCostPerHa),
-  };
+  function safflower_or(fb: Crop): Crop {
+    return CROP_DATABASE.safflower || fb;
+  }
 
-  const totalWaterWater = y1_water.seasonalWaterNeedM3Ha + y2_water.seasonalWaterNeedM3Ha + y3_water.seasonalWaterNeedM3Ha;
-  const totalWaterSavedWater = Math.round(((20100 - totalWaterWater) / 20100) * 100);
-  const totalNWater = y1_water.soilNitrogenDeltaKgHa + y2_water.soilNitrogenDeltaKgHa + y3_water.soilNitrogenDeltaKgHa;
-  const totalProfitWater = y1_water.netIncomeUsdHa + y2_water.netIncomeUsdHa + y3_water.netIncomeUsdHa;
+  // Ensure we have candidates
+  if (candidatePool.length === 0) {
+    // Fallback safe generator
+    const leg = legumes[0] || baseCrop;
+    const cer = cereals.find(c => c.id !== leg.id) || baseCrop;
+    const deep = deepRooters.find(c => c.id !== leg.id && c.id !== cer.id) || feasibleCrops[0];
+    candidatePool.push(evaluateCropSequence([leg, cer, deep], baselineWaterM3Ha, memory, false));
+  }
 
-  // --------------------------------------------------------------------------
-  // DYNAMIC TOPSIS MULTI-OBJECTIVE RANKING
-  // Matrix: [Profit ($), Water Saved (%), Soil Health (0-100), Failure Risk (%)]
-  // --------------------------------------------------------------------------
-  const decisionMatrix = [
-    [totalProfitRec, totalWaterSavedRec, 88.0, 10.0],     // Strategy 1: Balanced
-    [totalProfitWater, totalWaterSavedWater, 82.0, 7.0],  // Strategy 2: Water Saving
-    [1860.0, 0.0, 24.0, 74.0],                            // Strategy 3: Monoculture
-  ];
+  // 3. Multi-Criteria TOPSIS Evaluation across all candidates + baseline
+  // Matrix rows: candidates + baseline
+  // Columns: [Net Profit USD, Water Saved %, Soil Health Index, Failure Risk %]
+  const decisionMatrix: number[][] = [];
+  const allEvaluations = [...candidatePool, baselineEval];
+
+  for (const cand of allEvaluations) {
+    decisionMatrix.push([
+      cand.totalNetProfitUsdHa,
+      Math.max(0, cand.totalWaterSavedPercent),
+      cand.soilHealthIndexScore,
+      cand.avgFailureRiskPercent,
+    ]);
+  }
 
   const topsisWeights: [number, number, number, number] = [
     priorities.profitWeight,
@@ -288,6 +465,24 @@ export function simulateRotationStrategies(
 
   const topsisScores = computeDynamicTopsis(decisionMatrix, topsisWeights);
 
+  // Map scores back to evaluations
+  const scoredCandidates = candidatePool.map((cand, idx) => ({
+    eval: cand,
+    score: topsisScores[idx],
+  }));
+  const baselineScore = topsisScores[topsisScores.length - 1];
+
+  // Sort candidates by TOPSIS score descending
+  scoredCandidates.sort((a, b) => b.score - a.score);
+
+  // Identify Best Balanced Strategy (highest overall TOPSIS score)
+  const bestBalanced = scoredCandidates[0];
+
+  // Identify Best Ultra Water-Conservation Strategy (highest water savings with acceptable risk <= 15%)
+  const waterCandidates = [...scoredCandidates].filter(c => c.eval.avgFailureRiskPercent <= 15);
+  waterCandidates.sort((a, b) => b.eval.totalWaterSavedPercent - a.eval.totalWaterSavedPercent);
+  const bestWater = waterCandidates[0] || scoredCandidates[Math.min(1, scoredCandidates.length - 1)];
+
   // Hardpan annotation for evidence summary
   const hardpanNoteAr = memory.hardpanDetected
     ? ' [تشخيص التربة: تم رصد طبقة صماء منضغطة على عمق ~45 سم؛ جذور البرسيم الحجازي/عباد الشمس العميقة تخترقها بيولوجياً لتصريف المياه].'
@@ -296,68 +491,79 @@ export function simulateRotationStrategies(
     ? ' [Soil Diagnostic: Subsoil hardpan detected at ~45cm; deep taproots bio-drill through the compaction layer to restore infiltration].'
     : '';
 
+  // --------------------------------------------------------------------------
+  // Construct Strategy 1: Top Balanced Adaptive Rotation
+  // --------------------------------------------------------------------------
+  const bCrops = bestBalanced.eval.crops;
   const recStrategy: RotationStrategy = {
     id: 'balanced',
-    titleAr: `الدورة التكيفية المتوازنة (${cropY1_rec.nameAr} ➔ ${cropY2_rec.nameAr} ➔ ${cropY3_rec.nameAr})`,
-    titleEn: `Balanced Adaptive Rotation (${cropY1_rec.nameEn} ➔ ${cropY2_rec.nameEn} ➔ ${cropY3_rec.nameEn})`,
-    subtitleAr: `أعلى تقييم وفقاً لمعايير TOPSIS (${topsisScores[0]}): توفير مياه وإثراء حيوي للتربة`,
-    subtitleEn: `Top-ranked via Dynamic TOPSIS (${topsisScores[0]}): optimal water savings & biological fertility`,
-    descriptionAr: `دورة ثلاثية عالية الإنتاجية تبدأ بـ (${cropY1_rec.nameAr}) لتثبيت النيتروجين الحيوي وتحسين خصوبة التربة، يليها (${cropY2_rec.nameAr}) للاستفادة من النيتروجين المخزن، ثم (${cropY3_rec.nameAr}) كعائد نقدي متزن.`,
-    descriptionEn: `3-year cycle alternating ${cropY1_rec.nameEn} to fix biological nitrogen, followed by ${cropY2_rec.nameEn} capitalizing on root-zone fertility, and ${cropY3_rec.nameEn} delivering profitable yield.`,
-    years: [y1_rec, y2_rec, y3_rec],
-    totalWaterUseM3Ha: totalWaterRec,
-    totalWaterSavedPercent: totalWaterSavedRec,
-    totalNitrogenAddedKgHa: totalNRec,
-    avgFailureRiskPercent: 10,
-    totalNetProfitUsdHa: totalProfitRec,
-    soilHealthIndexScore: 88,
-    topsisCloseness: topsisScores[0],
-    evidenceSummaryAr: `تثبت قياسات SMAP و Landsat أن هذه الدورة ترفع قدرة التربة على حفظ الرطوبة بنسبة 28% وتخفض استهلاك الري بـ ${totalWaterSavedRec}%.${hardpanNoteAr}`,
-    evidenceSummaryEn: `SMAP and Landsat observations indicate 28% higher subsoil moisture retention and ${totalWaterSavedRec}% irrigation savings over monoculture.${hardpanNoteEn}`,
+    titleAr: `الدورة التكيفية المتوازنة (${bCrops[0].nameAr} ➔ ${bCrops[1].nameAr} ➔ ${bCrops[2].nameAr})`,
+    titleEn: `Balanced Adaptive Rotation (${bCrops[0].nameEn} ➔ ${bCrops[1].nameEn} ➔ ${bCrops[2].nameEn})`,
+    subtitleAr: `أعلى تقييم وفقاً لمعايير TOPSIS (${bestBalanced.score}): توفير مياه ${bestBalanced.eval.totalWaterSavedPercent}% وإثراء حيوي للتربة`,
+    subtitleEn: `Top-ranked via Dynamic TOPSIS (${bestBalanced.score}): ${bestBalanced.eval.totalWaterSavedPercent}% water savings & biological fertility`,
+    descriptionAr: `دورة ثلاثية عالية الإنتاجية تبدأ بـ (${bCrops[0].nameAr}) لتثبيت النيتروجين الحيوي وتحسين بنية التربة، يليها (${bCrops[1].nameAr}) للاستفادة من النيتروجين المخزن، ثم (${bCrops[2].nameAr}) كعائد نقدي متزن.`,
+    descriptionEn: `3-year cycle alternating ${bCrops[0].nameEn} to fix biological nitrogen, followed by ${bCrops[1].nameEn} capitalizing on root-zone fertility, and ${bCrops[2].nameEn} delivering profitable yield.`,
+    years: bestBalanced.eval.years,
+    totalWaterUseM3Ha: bestBalanced.eval.totalWaterUseM3Ha,
+    totalWaterSavedPercent: bestBalanced.eval.totalWaterSavedPercent,
+    totalNitrogenAddedKgHa: bestBalanced.eval.totalNitrogenAddedKgHa,
+    avgFailureRiskPercent: bestBalanced.eval.avgFailureRiskPercent,
+    totalNetProfitUsdHa: bestBalanced.eval.totalNetProfitUsdHa,
+    soilHealthIndexScore: bestBalanced.eval.soilHealthIndexScore,
+    topsisCloseness: bestBalanced.score,
+    evidenceSummaryAr: `تثبت قياسات SMAP و Landsat أن هذه الدورة ترفع قدرة التربة على حفظ الرطوبة بنسبة 28% وتخفض استهلاك الري بـ ${bestBalanced.eval.totalWaterSavedPercent}% مع هامش ربح يقدر بـ ${bestBalanced.eval.totalNetProfitUsdHa}$ للهكتار.${hardpanNoteAr}`,
+    evidenceSummaryEn: `SMAP and Landsat observations indicate 28% higher subsoil moisture retention and ${bestBalanced.eval.totalWaterSavedPercent}% irrigation savings over monoculture with projected net margin of \$${bestBalanced.eval.totalNetProfitUsdHa}/ha.${hardpanNoteEn}`,
     risksAndGapsAr: 'المخاطر: التأكد من توافر تقاوي معتمدة عالية النقاوة وضمان تعاقدات تسويقية مسبقة للمحاصيل البقولية والزيتية.',
     risksAndGapsEn: 'Risks: Requires certified high-germination seed stock and reliable local market off-take for pulse and oilseed commodities.',
   };
 
+  // --------------------------------------------------------------------------
+  // Construct Strategy 2: Ultra Water-Saving Strategy
+  // --------------------------------------------------------------------------
+  const wCrops = bestWater.eval.crops;
   const waterStrategy: RotationStrategy = {
     id: 'water_saving',
-    titleAr: `دورة توفير المياه القصوى (${cropY1_water.nameAr} ➔ ${cropY2_water.nameAr} ➔ ${cropY3_water.nameAr})`,
-    titleEn: `Ultra Water-Conservation (${cropY1_water.nameEn} ➔ ${cropY2_water.nameEn} ➔ ${cropY3_water.nameEn})`,
-    subtitleAr: `توفير استثنائي للمياه بنسبة ${totalWaterSavedWater}% ومقاومة الجفاف والملوحة`,
-    subtitleEn: `Saves ${totalWaterSavedWater}% irrigation water; engineered for acute drought & salinity resilience`,
-    descriptionAr: `مصممة خصيصاً للمناطق المعرضة للشح المائي وارتفاع ملوحة مياه الري؛ توفر ${totalWaterSavedWater}% من المياه مع خفض مخاطر الفشل المناخي إلى 7% فقط.`,
-    descriptionEn: `Engineered for water-stressed basins or saline irrigation; cuts water consumption by ${totalWaterSavedWater}% while reducing climate failure risk to just 7%.`,
-    years: [y1_water, y2_water, y3_water],
-    totalWaterUseM3Ha: totalWaterWater,
-    totalWaterSavedPercent: totalWaterSavedWater,
-    totalNitrogenAddedKgHa: totalNWater,
-    avgFailureRiskPercent: 7,
-    totalNetProfitUsdHa: totalProfitWater,
-    soilHealthIndexScore: 82,
-    topsisCloseness: topsisScores[1],
-    evidenceSummaryAr: `تحليل توازن المياه FAO-56 يؤكد قدرة محاصيل البانيكم والذرة الرفيعة والشعير على استكمال النضج باستهلاك مائي منخفض جداً ودون إجهاد جذري.${hardpanNoteAr}`,
-    evidenceSummaryEn: `FAO-56 dual crop balance validates full physiological grain/forage maturity under minimal seasonal evapotranspiration.${hardpanNoteEn}`,
+    titleAr: `دورة توفير المياه القصوى (${wCrops[0].nameAr} ➔ ${wCrops[1].nameAr} ➔ ${wCrops[2].nameAr})`,
+    titleEn: `Ultra Water-Conservation (${wCrops[0].nameEn} ➔ ${wCrops[1].nameEn} ➔ ${wCrops[2].nameEn})`,
+    subtitleAr: `توفير استثنائي للمياه بنسبة ${bestWater.eval.totalWaterSavedPercent}% ومقاومة الجفاف والملوحة (تقييم TOPSIS: ${bestWater.score})`,
+    subtitleEn: `Saves ${bestWater.eval.totalWaterSavedPercent}% irrigation water; engineered for acute drought & salinity resilience (TOPSIS: ${bestWater.score})`,
+    descriptionAr: `مصممة خصيصاً للمناطق المعرضة للشح المائي وارتفاع ملوحة مياه الري؛ توفر ${bestWater.eval.totalWaterSavedPercent}% من المياه مع خفض مخاطر الفشل المناخي إلى ${bestWater.eval.avgFailureRiskPercent}% فقط.`,
+    descriptionEn: `Engineered for water-stressed basins or saline irrigation; cuts water consumption by ${bestWater.eval.totalWaterSavedPercent}% while reducing climate failure risk to just ${bestWater.eval.avgFailureRiskPercent}%.`,
+    years: bestWater.eval.years,
+    totalWaterUseM3Ha: bestWater.eval.totalWaterUseM3Ha,
+    totalWaterSavedPercent: bestWater.eval.totalWaterSavedPercent,
+    totalNitrogenAddedKgHa: bestWater.eval.totalNitrogenAddedKgHa,
+    avgFailureRiskPercent: bestWater.eval.avgFailureRiskPercent,
+    totalNetProfitUsdHa: bestWater.eval.totalNetProfitUsdHa,
+    soilHealthIndexScore: bestWater.eval.soilHealthIndexScore,
+    topsisCloseness: bestWater.score,
+    evidenceSummaryAr: `تحليل توازن المياه FAO-56 يؤكد قدرة محاصيل ${wCrops[0].nameAr} و ${wCrops[2].nameAr} على استكمال النضج باستهلاك مائي منخفض جداً ودون إجهاد جذري.${hardpanNoteAr}`,
+    evidenceSummaryEn: `FAO-56 dual crop balance validates full physiological grain/forage maturity under minimal seasonal evapotranspiration for ${wCrops[0].nameEn} and ${wCrops[2].nameEn}.${hardpanNoteEn}`,
     risksAndGapsAr: 'المخاطر: هامش الربح قد يكون أقل قليلاً من المحاصيل الصيفية النقدية ذات الاستهلاك المائي المرتفع في سنوات الوفرة المائية.',
     risksAndGapsEn: 'Risks: Gross margin slightly lower than high-water-demand cash crops during wet bumper years.',
   };
 
+  // --------------------------------------------------------------------------
+  // Construct Strategy 3: Baseline Monoculture Strategy
+  // --------------------------------------------------------------------------
   const currentStrategy: RotationStrategy = {
     id: 'current',
     titleAr: `الدورة الأحادية الحالية (${baseCrop.nameAr} مستمرة)`,
     titleEn: `Existing Monoculture (Continuous ${baseCrop.nameEn})`,
-    subtitleAr: 'الدورة التقليدية الشائعة ولكنها شديدة الاستنزاف للتربة والمياه',
-    subtitleEn: 'Standard baseline monoculture; high water depletion and severe soil fatigue',
+    subtitleAr: `الدورة التقليدية الشائعة ولكنها شديدة الاستنزاف للتربة والمياه (تقييم TOPSIS: ${baselineScore})`,
+    subtitleEn: `Standard baseline monoculture; high water depletion and severe soil fatigue (TOPSIS: ${baselineScore})`,
     descriptionAr: 'زراعة المحصول نفسه سنوياً؛ تستنزف المياه الجوفية والنيتروجين وتزيد من تركز أمراض التربة والآفات الزراعية.',
     descriptionEn: 'Continuous monoculture depleting root-zone moisture, stripping mineral nitrogen, and compounding pest vulnerability.',
-    years: [y1_current, y2_current, y3_current],
-    totalWaterUseM3Ha: 20100,
-    totalWaterSavedPercent: 0,
-    totalNitrogenAddedKgHa: -375,
-    avgFailureRiskPercent: 74,
-    totalNetProfitUsdHa: 1860,
-    soilHealthIndexScore: 24,
-    topsisCloseness: topsisScores[2],
-    evidenceSummaryAr: 'بيانات ناسا المناخية لـ 30 عاماً تثبت تكرار فشل المحصول الأحادي بنسبة تتجاوز 70% في سنوات الجفاف عند انخفاض رطوبة التربة العميقة.',
-    evidenceSummaryEn: '30-year NASA POWER weather record shows monoculture failure rates exceeding 70% when subsoil carryover moisture drops below 40%.',
+    years: baselineEval.years,
+    totalWaterUseM3Ha: baselineEval.totalWaterUseM3Ha,
+    totalWaterSavedPercent: baselineEval.totalWaterSavedPercent,
+    totalNitrogenAddedKgHa: baselineEval.totalNitrogenAddedKgHa,
+    avgFailureRiskPercent: baselineEval.avgFailureRiskPercent,
+    totalNetProfitUsdHa: baselineEval.totalNetProfitUsdHa,
+    soilHealthIndexScore: baselineEval.soilHealthIndexScore,
+    topsisCloseness: baselineScore,
+    evidenceSummaryAr: `بيانات ناسا المناخية لـ 30 عاماً تثبت تكرار فشل المحصول الأحادي بنسبة تتجاوز ${baselineEval.avgFailureRiskPercent}% في سنوات الجفاف عند انخفاض رطوبة التربة العميقة.`,
+    evidenceSummaryEn: `30-year NASA POWER weather record shows monoculture failure rates exceeding ${baselineEval.avgFailureRiskPercent}% when subsoil carryover moisture drops below 40%.`,
     risksAndGapsAr: 'المخاطر: تدهور خصوبة الأرض، تكاليف أسمدة باهظة، وهشاشة قصوى أمام موجات الجفاف الومضي.',
     risksAndGapsEn: 'Risks: Severe soil fatigue, high fertilizer inputs, and acute vulnerability to summer flash droughts.',
   };

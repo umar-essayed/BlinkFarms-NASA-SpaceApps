@@ -52,6 +52,10 @@ class TelemetryRequest(BaseModel):
     area_ha: float = 25.0
     u_wind: float = 3.5
     d_edge: float = 80.0
+    esi_prior_7d: Optional[float] = None
+    gdd_accum: Optional[float] = 850.0
+    gdd_maturity: Optional[float] = 1350.0
+    simulate_shock: bool = False
 
 class SimulationRequest(BaseModel):
     lat: float = 30.850
@@ -109,7 +113,22 @@ def compute_telemetry(req: TelemetryRequest):
     _, eta = calc_actual_eta(le_c_decoupled, le_soil=fluxes["le_s"])
     esi = calc_esi(eta, req.pet)
 
-    is_alert, delta_7d = check_flash_drought_alert(esi, esi + 0.18, gdd_accum=850.0, gdd_maturity=1350.0)
+    # Determine flash drought alert from real observation time series or explicit simulation
+    if req.simulate_shock:
+        # Explicit labeled scenario simulation of sudden flash drought shock
+        prior_esi = min(1.0, esi + 0.22)
+        is_alert, delta_7d = check_flash_drought_alert(esi, prior_esi, gdd_accum=req.gdd_accum or 850.0, gdd_maturity=req.gdd_maturity or 1350.0)
+        alert_status = "simulated_shock_scenario"
+    elif req.esi_prior_7d is not None:
+        # Verified time series observation comparison
+        is_alert, delta_7d = check_flash_drought_alert(esi, req.esi_prior_7d, gdd_accum=req.gdd_accum or 850.0, gdd_maturity=req.gdd_maturity or 1350.0)
+        alert_status = "active_observed_degradation" if is_alert else "normal_transpiration"
+    else:
+        # Single-day observation: strictly report insufficient time series rather than fabricating past data
+        is_alert = False
+        delta_7d = 0.0
+        alert_status = "insufficient_time_series_data"
+
     depth_mm, vol_m3 = calc_prescriptive_irrigation(req.theta_fc, req.theta_root_30m, req.z_r, req.area_ha)
     
     # Healthy canopy transpires evaporatively to maintain Tc ~ 2.5°C cooler than air
@@ -129,6 +148,7 @@ def compute_telemetry(req: TelemetryRequest):
             "esi": float(round(esi, 3)),
             "delta_esi_7d": float(round(delta_7d, 3)),
             "is_flash_drought_alert": is_alert,
+            "alert_status": alert_status,
             "prescribed_irrigation_mm": float(round(depth_mm, 1)),
             "prescribed_volume_m3_ha": float(round(vol_m3 / req.area_ha, 0))
         }
@@ -151,42 +171,66 @@ def compute_rotation_simulation(req: SimulationRequest):
     ])
     weights = weights / np.sum(weights)
 
+    # Extract field memory attributes
+    mem = req.field_memory or {}
+    carryover = float(mem.get("carryoverWaterFraction", 0.55))
+    stress_freq = float(mem.get("stressFrequency36m", 0.15))
+    hardpan = bool(mem.get("hardpanDetected", False))
+    salinity = str(mem.get("salinityRiskLevel", "normal")).lower()
+
+    # Dynamic biophysical adjustments
+    base_climate_risk = min(85.0, max(12.0, 30.0 + stress_freq * 40.0 + (1.0 - carryover) * 20.0))
+    monoculture_risk = min(92.0, base_climate_risk + (12.0 if hardpan else 5.0) + (15.0 if salinity != 'normal' else 0.0))
+    monoculture_profit = max(900.0, 1860.0 - (250.0 if hardpan else 0.0) - (350.0 if salinity == 'severe' else 0.0))
+    monoculture_soil = max(12.0, 26.0 - (8.0 if hardpan else 0.0) - (6.0 if salinity == 'severe' else 0.0))
+
     if is_mena_arid:
-        # Decision Matrix [Net Profit USD, Water Saved %, Soil Health Index, Failure Risk %]
-        # Strategy 1: Berseem Clover / Alfalfa -> Durum Wheat -> Summer Maize / Sunflower
-        # Strategy 2: Panicum / Sorghum -> Faba Bean -> Barley
-        # Strategy 3: Monoculture Continuous Maize
+        # Strategy 1: Legume -> Cereal -> Cash/Bio-drill
+        b_profit = 2640.0 + (100.0 if carryover > 0.6 else -80.0)
+        b_water_saved = 38.0
+        b_soil = 88.0 + (6.0 if hardpan else 0.0)
+        b_risk = min(30.0, max(5.0, base_climate_risk * 0.28))
+
+        # Strategy 2: Ultra Drought & Salinity
+        w_profit = 2250.0 - (100.0 if salinity == 'severe' else 0.0)
+        w_water_saved = 48.0
+        w_soil = 82.0
+        w_risk = min(20.0, max(4.0, base_climate_risk * 0.20))
+
         matrix = np.array([
-            [2640.0, 36.0, 88.0, 10.0],  # Strategy 1: Regenerative Balanced (Top)
-            [2250.0, 47.0, 82.0, 7.0],   # Strategy 2: Ultra Drought & Salinity Resilience
-            [1860.0, 0.0,  24.0, 74.0],  # Strategy 3: Monoculture Baseline
+            [b_profit, b_water_saved, b_soil, b_risk],
+            [w_profit, w_water_saved, w_soil, w_risk],
+            [monoculture_profit, 0.0, monoculture_soil, monoculture_risk],
         ])
         is_benefit = [True, True, True, False]
         scores = solve_dynamic_topsis(matrix, weights, is_benefit)
 
+        crop1 = "alfalfa" if hardpan else "clover_berseem"
+        crop_salt = "panicum" if salinity != "normal" else "sorghum"
+
         strategies = [
             {
                 "id": "balanced",
-                "title_ar": "الدورة التكيفية المتوازنة (برسيم بلدي ➔ قمح ديورم ➔ عباد شمس/ذرة)",
-                "title_en": "Regenerative Balance (Berseem Clover ➔ Durum Wheat ➔ Sunflower/Maize)",
-                "crops": ["clover_berseem", "durum_wheat", "sunflower"],
-                "water_saved_percent": 36.0,
-                "nitrogen_added_kg_ha": 95.0,
-                "failure_risk_percent": 10.0,
-                "net_profit_usd_ha": 2640.0,
-                "soil_health_index": 88.0,
+                "title_ar": f"الدورة التكيفية المتوازنة ({'برسيم حجازي' if hardpan else 'برسيم بلدي'} ➔ قمح ديورم ➔ عباد شمس/ذرة)",
+                "title_en": f"Regenerative Balance ({'Alfalfa' if hardpan else 'Berseem Clover'} ➔ Durum Wheat ➔ Sunflower/Maize)",
+                "crops": [crop1, "durum_wheat", "sunflower"],
+                "water_saved_percent": float(round(b_water_saved, 1)),
+                "nitrogen_added_kg_ha": 95.0 if not hardpan else 140.0,
+                "failure_risk_percent": float(round(b_risk, 1)),
+                "net_profit_usd_ha": float(round(b_profit, 1)),
+                "soil_health_index": float(round(b_soil, 1)),
                 "topsis_score": float(round(scores[0], 3))
             },
             {
                 "id": "water_saving",
-                "title_ar": "دورة الصمود المائي والملحي (بانيكم/ذرة رفيعة ➔ فول بلدي ➔ شعير)",
-                "title_en": "Ultra Drought & Salinity Resilience (Panicum/Sorghum ➔ Faba Bean ➔ Barley)",
-                "crops": ["panicum", "faba_bean", "barley"],
-                "water_saved_percent": 47.0,
+                "title_ar": f"دورة الصمود المائي والملحي ({'بانيكم' if salinity != 'normal' else 'ذرة رفيعة'} ➔ فول بلدي ➔ شعير)",
+                "title_en": f"Ultra Drought & Salinity Resilience ({'Panicum' if salinity != 'normal' else 'Sorghum'} ➔ Faba Bean ➔ Barley)",
+                "crops": [crop_salt, "faba_bean", "barley"],
+                "water_saved_percent": float(round(w_water_saved, 1)),
                 "nitrogen_added_kg_ha": 65.0,
-                "failure_risk_percent": 7.0,
-                "net_profit_usd_ha": 2250.0,
-                "soil_health_index": 82.0,
+                "failure_risk_percent": float(round(w_risk, 1)),
+                "net_profit_usd_ha": float(round(w_profit, 1)),
+                "soil_health_index": float(round(w_soil, 1)),
                 "topsis_score": float(round(scores[1], 3))
             },
             {
@@ -196,9 +240,9 @@ def compute_rotation_simulation(req: SimulationRequest):
                 "crops": ["maize", "maize", "maize"],
                 "water_saved_percent": 0.0,
                 "nitrogen_added_kg_ha": -375.0,
-                "failure_risk_percent": 74.0,
-                "net_profit_usd_ha": 1860.0,
-                "soil_health_index": 24.0,
+                "failure_risk_percent": float(round(monoculture_risk, 1)),
+                "net_profit_usd_ha": float(round(monoculture_profit, 1)),
+                "soil_health_index": float(round(monoculture_soil, 1)),
                 "topsis_score": float(round(scores[2], 3))
             }
         ]
