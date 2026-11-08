@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Language, ChatMessage } from '@/lib/types';
 import MarkdownMessage from '@/components/MarkdownMessage';
 import { SendIcon } from '@/components/Icons';
+import LiveVoiceOverlay from '@/components/LiveVoiceOverlay';
 
 export interface ChatSession {
   id: string;
@@ -24,6 +25,8 @@ export default function DedicatedChatPage() {
   const [inputText, setInputText] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [centralMemory, setCentralMemory] = useState<string[]>([]);
+  const [isVoiceOverlayOpen, setIsVoiceOverlayOpen] = useState(false);
+  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Field & User Context State
@@ -153,6 +156,81 @@ export default function DedicatedChatPage() {
           '🌡️ Are weather & wind conditions safe for spraying today?',
           '🛠️ How do I biologically remediate subsoil compaction?',
         ];
+
+  const handleVoiceNewMessage = (userText: string, assistantReply: string) => {
+    if (!activeSession) return;
+
+    const userMsg: ChatMessage = {
+      id: `u_${Date.now()}`,
+      sender: 'user',
+      content: userText,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    const botMsg: ChatMessage = {
+      id: `bot_${Date.now() + 1}`,
+      sender: 'assistant',
+      content: assistantReply,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    let newTitle = activeSession.title;
+    if (activeSession.messages.length <= 1) {
+      newTitle = userText.length > 28 ? userText.substring(0, 28) + '...' : userText;
+    }
+
+    const updatedSession: ChatSession = {
+      ...activeSession,
+      title: newTitle,
+      updatedAt: new Date().toISOString(),
+      messages: [...activeSession.messages, userMsg, botMsg],
+    };
+
+    const newSessionsList = sessions.map((s) => (s.id === activeSession.id ? updatedSession : s));
+    setSessions(newSessionsList);
+    localStorage.setItem('blinkfarms_chat_sessions_v2', JSON.stringify(newSessionsList));
+  };
+
+  const handleSpeakMessage = (msgId: string, text: string) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    const synth = window.speechSynthesis;
+
+    if (speakingMessageId === msgId) {
+      synth.cancel();
+      setSpeakingMessageId(null);
+      return;
+    }
+
+    synth.cancel();
+    setSpeakingMessageId(msgId);
+
+    // Clean text for speech
+    const clean = text
+      .replace(/\[MEMORY:[^\]]+\]/g, '')
+      .replace(/\*\*/g, '')
+      .replace(/###/g, '')
+      .replace(/\|/g, ' ')
+      .replace(/-{3,}/g, '')
+      .trim();
+
+    const utterance = new SpeechSynthesisUtterance(clean);
+    utterance.lang = lang === 'ar' ? 'ar-EG' : 'en-US';
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+
+    const voices = synth.getVoices();
+    if (voices && voices.length > 0) {
+      const match = voices.find((v) =>
+        lang === 'ar' ? v.lang.startsWith('ar') : v.lang.startsWith('en')
+      );
+      if (match) utterance.voice = match;
+    }
+
+    utterance.onend = () => setSpeakingMessageId(null);
+    utterance.onerror = () => setSpeakingMessageId(null);
+
+    synth.speak(utterance);
+  };
 
   const handleSendMessage = async (textToSend?: string) => {
     const q = textToSend || inputText;
@@ -424,6 +502,16 @@ export default function DedicatedChatPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Live Voice Call Button in Header */}
+            <button
+              onClick={() => setIsVoiceOverlayOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-[11px] font-bold shadow-sm shadow-emerald-500/20 active:scale-95 transition-all"
+              title={lang === 'ar' ? 'تحدث مع المرشد بالصوت المباشر' : 'Live Voice Call with Advisor'}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+              <span>{lang === 'ar' ? 'مكالمة صوتية' : 'Live Voice'}</span>
+            </button>
+
             <button
               onClick={toggleLang}
               className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 active:scale-95 transition-all"
@@ -454,20 +542,38 @@ export default function DedicatedChatPage() {
                 )}
 
                 <div
-                  className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-3.5 py-2.5 text-xs sm:text-[13px] leading-relaxed shadow-sm ${
+                  className={`relative group max-w-[85%] sm:max-w-[75%] rounded-2xl px-3.5 py-2.5 text-xs sm:text-[13px] leading-relaxed shadow-sm ${
                     m.sender === 'user'
                       ? 'bg-blue-600 text-white rounded-br-xs'
                       : 'bg-white dark:bg-neutral-800/90 text-neutral-800 dark:text-neutral-100 border border-black/5 dark:border-white/5 rounded-bl-xs'
                   }`}
                 >
                   <MarkdownMessage content={m.content || ''} />
-                  <span
-                    className={`text-[9px] block text-right mt-1 opacity-60 ${
-                      m.sender === 'user' ? 'text-white/80' : 'text-neutral-400'
-                    }`}
-                  >
-                    {m.timestamp}
-                  </span>
+                  
+                  <div className="flex items-center justify-between mt-1.5 pt-1 border-t border-black/5 dark:border-white/5">
+                    {m.sender === 'assistant' ? (
+                      <button
+                        onClick={() => handleSpeakMessage(m.id, m.content || '')}
+                        className="text-[11px] p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-500 hover:text-blue-600 dark:hover:text-blue-400 transition-all flex items-center gap-1 font-medium"
+                        title={speakingMessageId === m.id ? 'إيقاف الصوت' : 'استمع للإجابة بصوت المرشد'}
+                      >
+                        <span>{speakingMessageId === m.id ? '⏹️' : '🔊'}</span>
+                        <span className="text-[10px] hidden sm:inline">
+                          {speakingMessageId === m.id
+                            ? (lang === 'ar' ? 'إيقاف' : 'Stop')
+                            : (lang === 'ar' ? 'استمع' : 'Listen')}
+                        </span>
+                      </button>
+                    ) : <div />}
+
+                    <span
+                      className={`text-[9px] opacity-60 ${
+                        m.sender === 'user' ? 'text-white/80' : 'text-neutral-400'
+                      }`}
+                    >
+                      {m.timestamp}
+                    </span>
+                  </div>
                 </div>
               </div>
             ))}
@@ -514,6 +620,16 @@ export default function DedicatedChatPage() {
             }}
             className="max-w-2xl mx-auto flex items-center gap-2"
           >
+            {/* Quick Live Voice Mode Trigger Button */}
+            <button
+              type="button"
+              onClick={() => setIsVoiceOverlayOpen(true)}
+              className="p-2.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 shadow-sm active:scale-95 transition-all shrink-0 flex items-center justify-center text-sm"
+              title={lang === 'ar' ? 'محادثة صوتية حية مع المرشد' : 'Live Voice Call'}
+            >
+              🎙️
+            </button>
+
             <input
               type="text"
               value={inputText}
@@ -532,6 +648,29 @@ export default function DedicatedChatPage() {
           </form>
         </div>
       </main>
+
+      {/* Futuristic Live Voice Call Overlay (ChatGPT / Gemini Live Experience) */}
+      <LiveVoiceOverlay
+        isOpen={isVoiceOverlayOpen}
+        onClose={() => setIsVoiceOverlayOpen(false)}
+        lang={lang}
+        onNewMessage={handleVoiceNewMessage}
+        centralMemory={centralMemory}
+        farmContext={{
+          fieldName,
+          areaFeddan,
+          canopyTempAnomalyC: 2.6,
+          prescribedIrrigationMm: 5.6,
+          hardpanDetected: wizardData?.subsoilIssue === 'hardpan',
+          previousCrop: wizardData?.previousCrop || 'برسيم بلدي',
+          soilType: wizardData?.soilType || 'طميية ثقيلة',
+          irrigationType: wizardData?.irrigationType || 'تنقيط',
+          primaryPriority: wizardData?.primaryPriority || 'water',
+          recommendedRotationTitle: 'الدورة التكيفية المتوازنة (برسيم ➔ قمح ديورم ➔ عباد شمس)',
+          waterSavedPercent: 46,
+          weatherSummary,
+        }}
+      />
     </div>
   );
 }
