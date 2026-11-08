@@ -25,7 +25,7 @@ export default function OnboardingStory({ lang, onFinish }: OnboardingStoryProps
     {
       badge: 'ذكاء باطن الأرض',
       icon: '🔄',
-      title: 'ذاكرة الحقل (F_state) واستكشاف التربة بدون مجسات',
+      title: 'ذاكرة الحقل واستكشاف التربة بدون مجسات',
       subtitle: 'لا نعامل الأرض كصفحة بيضاء، بل ككائن حي له تاريخ',
       desc: 'عبر المسبار العكسي للري وبيانات ناسا لـ 10 سنوات، يكتشف النظام كتمة باطن التربة (Hardpan) وطبقات التمليح واستنزاف النيتروجين بدقة 30 متراً من الفضاء دون الحاجة لحساسات أرضية مكلفة.',
       stat: '30 متراً',
@@ -35,7 +35,7 @@ export default function OnboardingStory({ lang, onFinish }: OnboardingStoryProps
     {
       badge: 'تكييف المزارع',
       icon: '🌾',
-      title: 'تخطيط الدورات الزراعية لـ 3 سنوات وتوفير 36% مياه',
+      title: 'تخطيط الدورات الزراعية وتوفير 36% مياه',
       subtitle: 'محاكاة 30 سنة مناخ عبر خوارزمية Dynamic TOPSIS',
       desc: 'بناءً على أولوياتك وموقعك الجغرافي، يرشح لك المحرك أفضل تعاقب محصولي ذكي يكسر دورات الآفات، يجدد النيتروجين الحيوي طبيعياً، ويحمي استثماراتك من صدمات تغير المناخ.',
       stat: '-36% مياه',
@@ -58,7 +58,7 @@ export default function OnboardingStory({ lang, onFinish }: OnboardingStoryProps
     {
       badge: 'Subsoil Intelligence',
       icon: '🔄',
-      title: 'Field Memory (F_state) & Sensorless Diagnostics',
+      title: 'Field Memory & Sensorless Diagnostics',
       subtitle: 'Farmland has a past. We diagnose it from orbit.',
       desc: 'Using closed-loop irrigation probing and 10-year NASA Earth observations, the system diagnoses subsoil compaction (Hardpan) and salinity at 30m resolution without costly in-situ ground probes.',
       stat: '30 Meters',
@@ -90,14 +90,14 @@ export default function OnboardingStory({ lang, onFinish }: OnboardingStoryProps
   };
 
   return (
-    <div className="fixed inset-0 z-[4000] bg-black flex flex-col justify-between p-4 sm:p-8 animate-fadeIn text-white overflow-hidden">
-      {/* Top Progress Bars (Instagram / Stories style) */}
-      <div className="flex items-center justify-between gap-2 max-w-xl mx-auto w-full pt-2">
+    <div className="h-[100dvh] max-h-[100dvh] w-full bg-black flex flex-col justify-between p-3.5 sm:p-6 text-white overflow-hidden select-none font-sans">
+      {/* Top Progress Bars */}
+      <div className="flex items-center justify-between gap-3 max-w-md mx-auto w-full pt-1 shrink-0">
         <div className="flex items-center gap-1.5 flex-1">
           {slides.map((_, i) => (
             <div
               key={i}
-              className="h-1.5 flex-1 bg-white/20 rounded-full overflow-hidden"
+              className="h-1 flex-1 bg-white/20 rounded-full overflow-hidden"
             >
               <div
                 className={`h-full bg-white transition-all duration-300 ${
@@ -110,60 +110,60 @@ export default function OnboardingStory({ lang, onFinish }: OnboardingStoryProps
 
         <button
           onClick={onFinish}
-          className="text-xs font-bold px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-all active:scale-95"
+          className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20 text-white/80 active:scale-95 transition-all"
         >
           {lang === 'ar' ? 'تخطي ✕' : 'Skip ✕'}
         </button>
       </div>
 
-      {/* Main Slide Content */}
-      <div className="max-w-xl mx-auto w-full my-auto space-y-6 text-center py-6">
-        <div className="flex items-center justify-center gap-2 mb-1">
+      {/* Main Slide Content (Compact One-Screen layout) */}
+      <div className="max-w-md mx-auto w-full my-auto space-y-3 sm:space-y-4 text-center py-2 shrink-0">
+        <div className="flex items-center justify-center gap-2">
           <img
             src="/logo.png"
             alt="BlinkFarms"
-            className="w-12 h-12 object-contain drop-shadow-lg"
+            className="w-8 h-8 sm:w-10 sm:h-10 object-contain drop-shadow-md"
           />
-          <span className="text-lg font-black tracking-tight text-white">BlinkFarms</span>
+          <span className="text-base sm:text-lg font-black tracking-tight text-white">BlinkFarms</span>
         </div>
 
-        <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto rounded-3xl bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center text-4xl sm:text-5xl shadow-2xl">
+        <div className="w-14 h-14 sm:w-18 sm:h-18 mx-auto rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center text-3xl sm:text-4xl shadow-xl">
           {cur.icon}
         </div>
 
-        <div className="space-y-2">
-          <span className="text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full bg-white/15 text-blue-200">
+        <div className="space-y-1 sm:space-y-1.5">
+          <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-white/15 text-blue-200">
             {cur.badge}
           </span>
-          <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight">
+          <h2 className="text-lg sm:text-2xl font-black text-white tracking-tight leading-snug px-2">
             {cur.title}
           </h2>
-          <p className="text-xs sm:text-sm font-semibold text-blue-200">
+          <p className="text-[11px] sm:text-xs font-semibold text-blue-200/90">
             {cur.subtitle}
           </p>
         </div>
 
-        <p className="text-xs sm:text-sm text-white/80 leading-relaxed max-w-lg mx-auto">
+        <p className="text-[11px] sm:text-xs text-white/75 leading-relaxed max-w-sm mx-auto px-2">
           {cur.desc}
         </p>
 
-        {/* Big Highlight Stat Box */}
-        <div className={`p-4 rounded-3xl bg-gradient-to-r ${cur.gradient} border border-white/20 shadow-xl max-w-md mx-auto`}>
-          <div className="text-2xl sm:text-3xl font-black font-mono text-white">
+        {/* Highlight Stat Box */}
+        <div className={`py-2 px-4 rounded-2xl bg-gradient-to-r ${cur.gradient} border border-white/20 shadow-lg max-w-xs mx-auto`}>
+          <div className="text-xl sm:text-2xl font-black font-mono text-white">
             {cur.stat}
           </div>
-          <div className="text-xs text-white/80 font-medium mt-0.5">
+          <div className="text-[10px] sm:text-[11px] text-white/80 font-medium">
             {cur.statLabel}
           </div>
         </div>
       </div>
 
       {/* Bottom Button Bar */}
-      <div className="max-w-xl mx-auto w-full flex items-center justify-between gap-4 pb-4">
+      <div className="max-w-md mx-auto w-full flex items-center justify-between gap-3 pb-2 shrink-0">
         {slide > 0 ? (
           <button
             onClick={() => setSlide(slide - 1)}
-            className="px-5 py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition-all active:scale-95"
+            className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition-all active:scale-95"
           >
             {lang === 'ar' ? 'السابق' : 'Back'}
           </button>
@@ -173,9 +173,9 @@ export default function OnboardingStory({ lang, onFinish }: OnboardingStoryProps
 
         <button
           onClick={handleNext}
-          className="px-8 py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-sm shadow-xl active:scale-95 transition-all flex items-center gap-2"
+          className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs sm:text-sm shadow-lg active:scale-95 transition-all flex items-center gap-1.5"
         >
-          <span>{isLast ? (lang === 'ar' ? 'ابدأ الاستخدام الآن 🚀' : 'Start Journey 🚀') : (lang === 'ar' ? 'التالي ➔' : 'Next ➔')}</span>
+          <span>{isLast ? (lang === 'ar' ? 'ابدأ الاستخدام 🚀' : 'Start Journey 🚀') : (lang === 'ar' ? 'التالي ➔' : 'Next ➔')}</span>
         </button>
       </div>
     </div>

@@ -102,7 +102,7 @@ export default function LoginPage() {
     handleSuccessfulAuth(realUser);
   };
 
-  // Initialize Google Identity Services
+  // Initialize Google Identity Services with Dark / Filled Black Theme
   const initGoogleIdentity = () => {
     if (typeof window !== 'undefined' && window.google?.accounts?.id) {
       setGoogleLoaded(true);
@@ -118,12 +118,12 @@ export default function LoginPage() {
           googleBtnContainerRef.current.innerHTML = '';
           window.google.accounts.id.renderButton(googleBtnContainerRef.current, {
             type: 'standard',
-            theme: 'outline',
+            theme: 'filled_black', // sleek black theme matching dark UI
             size: 'large',
             text: 'continue_with',
             shape: 'pill',
             logo_alignment: 'left',
-            width: 270,
+            width: 260,
             locale: lang === 'ar' ? 'ar' : 'en',
           });
         }
@@ -155,7 +155,7 @@ export default function LoginPage() {
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password.trim()) {
-      setAuthError(lang === 'ar' ? 'يرجى إدخال البريد الإلكتروني وكلمة المرور' : 'Please provide email and password');
+      setAuthError(lang === 'ar' ? 'يرجى إدخال البريد وكلمة المرور' : 'Please provide email and password');
       return;
     }
 
@@ -186,19 +186,7 @@ export default function LoginPage() {
           role: 'farmer',
         };
 
-        if (data.session) {
-          // Direct login without required email confirmation
-          handleSuccessfulAuth(newUser);
-        } else {
-          // Email confirmation is enabled in Supabase project
-          setAuthSuccess(
-            lang === 'ar'
-              ? 'تم إنشاء الحساب بنجاح! إذا كانت رسالة التأكيد مطلوبة تفقد بريدك، أو يمكنك الدخول مباشرة الآن.'
-              : 'Account created! Please check your email or proceed to sign in.'
-          );
-          // Also allow immediate transition
-          handleSuccessfulAuth(newUser);
-        }
+        handleSuccessfulAuth(newUser);
       } else {
         // --- 2. Supabase User Sign In ---
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -222,7 +210,6 @@ export default function LoginPage() {
       console.error('Supabase auth error:', err);
       let errMsg = err.message || 'حدث خطأ أثناء المصادقة';
       
-      // Friendly localized error messages
       if (errMsg.includes('Invalid login credentials')) {
         errMsg = lang === 'ar' ? 'بيانات الدخول غير صحيحة، تأكد من البريد وكلمة المرور' : 'Invalid email or password';
       } else if (errMsg.includes('User already registered')) {
@@ -230,7 +217,7 @@ export default function LoginPage() {
       } else if (errMsg.includes('Password should be at least')) {
         errMsg = lang === 'ar' ? 'كلمة المرور يجب ألا تقل عن 6 أحرف' : 'Password must be at least 6 characters';
       } else if (errMsg.includes('Email not confirmed')) {
-        errMsg = lang === 'ar' ? 'يرجى تأكيد بريدك الإلكتروني أولاً أو تواصل مع الدعم' : 'Email not confirmed yet';
+        errMsg = lang === 'ar' ? 'يرجى تأكيد بريدك الإلكتروني أولاً' : 'Email not confirmed yet';
       }
       setAuthError(errMsg);
     } finally {
@@ -241,7 +228,7 @@ export default function LoginPage() {
   return (
     <main
       dir={lang === 'ar' ? 'rtl' : 'ltr'}
-      className="min-h-screen w-full bg-[#F5F5F7] dark:bg-black flex flex-col justify-between p-4 sm:p-6 animate-fadeIn font-sans"
+      className="h-[100dvh] max-h-[100dvh] w-full bg-[#0a0a0c] text-white flex flex-col justify-between p-3 sm:p-5 overflow-hidden font-sans select-none"
     >
       {/* Official Google Identity Services Script */}
       <Script
@@ -250,40 +237,40 @@ export default function LoginPage() {
         onLoad={initGoogleIdentity}
       />
 
-      {/* Top Bar with Language Toggle */}
-      <div className="w-full max-w-sm sm:max-w-md mx-auto flex justify-between items-center py-2">
+      {/* Top Header */}
+      <header className="w-full max-w-sm sm:max-w-md mx-auto flex justify-between items-center shrink-0">
         <div className="flex items-center gap-2">
-          <img src="/logo.png" alt="BlinkFarms Logo" className="w-8 h-8 object-contain" />
-          <span className="font-black text-sm tracking-tight text-neutral-800 dark:text-neutral-200">
+          <img src="/logo.png" alt="BlinkFarms Logo" className="w-7 h-7 sm:w-8 sm:h-8 object-contain" />
+          <span className="font-black text-sm tracking-tight text-white/90">
             BlinkFarms
           </span>
         </div>
         <button
           onClick={toggleLang}
-          className="text-xs font-bold px-3 py-1.5 rounded-full bg-white dark:bg-neutral-800 shadow-sm border border-black/5 dark:border-white/10 text-neutral-700 dark:text-neutral-200 active:scale-95 transition-all hover:bg-neutral-50"
+          className="text-[11px] font-bold px-3 py-1 rounded-full bg-white/10 hover:bg-white/15 border border-white/10 text-white/90 active:scale-95 transition-all"
         >
           {lang === 'ar' ? 'English' : 'عربي'}
         </button>
-      </div>
+      </header>
 
-      {/* Main Login Card */}
-      <div className="w-full max-w-sm sm:max-w-md mx-auto bg-white dark:bg-neutral-900 rounded-[2rem] p-6 sm:p-8 shadow-xl border border-black/5 dark:border-white/10 space-y-5 my-auto">
-        {/* Brand Header */}
-        <div className="text-center space-y-1.5">
-          <h1 className="text-xl sm:text-2xl font-black text-neutral-900 dark:text-white tracking-tight">
+      {/* Main Single-Screen Form Card (No Scroll) */}
+      <div className="w-full max-w-sm sm:max-w-md mx-auto bg-neutral-900/90 backdrop-blur-2xl rounded-3xl p-4 sm:p-6 shadow-2xl border border-white/10 space-y-3.5 my-auto shrink-0">
+        {/* Title */}
+        <div className="text-center space-y-1">
+          <h1 className="text-lg sm:text-xl font-black text-white tracking-tight">
             {isRegisterMode
               ? (lang === 'ar' ? 'إنشاء حساب مزارع جديد' : 'Create Farmer Account')
-              : (lang === 'ar' ? 'تسجيل الدخول' : 'Welcome Back')}
+              : (lang === 'ar' ? 'تسجيل الدخول' : 'Sign In')}
           </h1>
-          <p className="text-xs text-neutral-500 dark:text-neutral-400">
+          <p className="text-[11px] text-neutral-400">
             {lang === 'ar'
-              ? 'سجّل دخولك لحفظ بيانات أرضك وربطها بنظام ناسا للرصد الزراعي'
-              : 'Sign in to access your NASA Earth Observation farm records'}
+              ? 'سجّل دخولك لربط بيانات حقلك بمراصد ناسا الفضائية'
+              : 'Sign in to access NASA Earth Observation records'}
           </p>
         </div>
 
         {/* Tab Switcher */}
-        <div className="grid grid-cols-2 p-1 bg-neutral-100 dark:bg-neutral-800/80 rounded-2xl text-xs font-bold">
+        <div className="grid grid-cols-2 p-1 bg-white/5 rounded-2xl text-[11px] font-bold border border-white/5">
           <button
             type="button"
             onClick={() => {
@@ -291,10 +278,10 @@ export default function LoginPage() {
               setAuthError(null);
               setAuthSuccess(null);
             }}
-            className={`py-2 rounded-xl transition-all ${
+            className={`py-1.5 rounded-xl transition-all ${
               !isRegisterMode
-                ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
-                : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'
+                ? 'bg-emerald-600 text-white shadow-md'
+                : 'text-neutral-400 hover:text-white'
             }`}
           >
             {lang === 'ar' ? 'تسجيل الدخول' : 'Sign In'}
@@ -306,10 +293,10 @@ export default function LoginPage() {
               setAuthError(null);
               setAuthSuccess(null);
             }}
-            className={`py-2 rounded-xl transition-all ${
+            className={`py-1.5 rounded-xl transition-all ${
               isRegisterMode
-                ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
-                : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'
+                ? 'bg-emerald-600 text-white shadow-md'
+                : 'text-neutral-400 hover:text-white'
             }`}
           >
             {lang === 'ar' ? 'حساب جديد' : 'Sign Up'}
@@ -318,29 +305,29 @@ export default function LoginPage() {
 
         {/* Alerts */}
         {authError && (
-          <div className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/40 text-rose-700 dark:text-rose-300 text-xs font-semibold text-center flex items-center justify-center gap-2">
+          <div className="py-2 px-3 rounded-xl bg-rose-950/60 border border-rose-800/60 text-rose-300 text-[11px] font-semibold text-center flex items-center justify-center gap-1.5">
             <span>⚠️</span>
             <span>{authError}</span>
           </div>
         )}
 
         {authSuccess && (
-          <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-300 text-xs font-semibold text-center flex items-center justify-center gap-2">
+          <div className="py-2 px-3 rounded-xl bg-emerald-950/60 border border-emerald-800/60 text-emerald-300 text-[11px] font-semibold text-center flex items-center justify-center gap-1.5">
             <span>✅</span>
             <span>{authSuccess}</span>
           </div>
         )}
 
-        {/* Sleek Google Sign-In Container */}
-        <div className="space-y-2 pt-1">
-          <div className="w-full flex justify-center items-center min-h-[44px]">
+        {/* Black Theme Google Sign-In */}
+        <div className="space-y-1.5 pt-0.5">
+          <div className="w-full flex justify-center items-center min-h-[42px]">
             <div
               ref={googleBtnContainerRef}
               id="googleSignInContainer"
-              className="flex justify-center items-center w-full max-w-[280px]"
+              className="flex justify-center items-center w-full max-w-[260px] overflow-hidden"
             />
           </div>
-          <p className="text-[11px] text-center text-neutral-400">
+          <p className="text-[10px] text-center text-neutral-400">
             {lang === 'ar'
               ? 'تسجيل سريع ومباشر بحساب Google'
               : 'Direct one-click sign in with Google'}
@@ -348,19 +335,19 @@ export default function LoginPage() {
         </div>
 
         {/* Divider */}
-        <div className="flex items-center gap-3">
-          <div className="h-px flex-1 bg-black/10 dark:bg-white/10" />
-          <span className="text-[11px] text-neutral-400 font-bold uppercase tracking-wider">
-            {lang === 'ar' ? 'أو بالبريد الإلكتروني' : 'or with email'}
+        <div className="flex items-center gap-2.5">
+          <div className="h-px flex-1 bg-white/10" />
+          <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">
+            {lang === 'ar' ? 'أو بالبريد عبر Supabase' : 'or with Supabase'}
           </span>
-          <div className="h-px flex-1 bg-black/10 dark:bg-white/10" />
+          <div className="h-px flex-1 bg-white/10" />
         </div>
 
         {/* Supabase Email/Password Form */}
-        <form onSubmit={handleEmailAuth} className="space-y-3.5">
+        <form onSubmit={handleEmailAuth} className="space-y-2.5">
           {isRegisterMode && (
             <div>
-              <label className="block text-[11px] font-bold text-neutral-600 dark:text-neutral-300 mb-1">
+              <label className="block text-[10px] font-bold text-neutral-300 mb-0.5">
                 {lang === 'ar' ? 'اسم المزارع أو الحقل' : 'Farmer or Field Name'}
               </label>
               <input
@@ -368,13 +355,13 @@ export default function LoginPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder={lang === 'ar' ? 'مثال: مزرعة الحاج عبد الله' : 'e.g. Green Valley Farm'}
-                className="w-full px-4 py-2.5 rounded-2xl bg-neutral-50 dark:bg-neutral-800/80 text-xs font-medium text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 border border-neutral-200 dark:border-neutral-700 transition-all"
+                className="w-full px-3 py-2 rounded-xl bg-white/5 text-xs font-medium text-white placeholder:text-neutral-500 focus:outline-none focus:ring-1.5 focus:ring-emerald-500 border border-white/10 transition-all"
               />
             </div>
           )}
 
           <div>
-            <label className="block text-[11px] font-bold text-neutral-600 dark:text-neutral-300 mb-1">
+            <label className="block text-[10px] font-bold text-neutral-300 mb-0.5">
               {lang === 'ar' ? 'البريد الإلكتروني' : 'Email Address'}
             </label>
             <input
@@ -383,19 +370,19 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="farmer@example.com"
-              className="w-full px-4 py-2.5 rounded-2xl bg-neutral-50 dark:bg-neutral-800/80 text-xs font-medium text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 border border-neutral-200 dark:border-neutral-700 transition-all"
+              className="w-full px-3 py-2 rounded-xl bg-white/5 text-xs font-medium text-white placeholder:text-neutral-500 focus:outline-none focus:ring-1.5 focus:ring-emerald-500 border border-white/10 transition-all"
             />
           </div>
 
           <div>
-            <div className="flex justify-between items-center mb-1">
-              <label className="block text-[11px] font-bold text-neutral-600 dark:text-neutral-300">
+            <div className="flex justify-between items-center mb-0.5">
+              <label className="block text-[10px] font-bold text-neutral-300">
                 {lang === 'ar' ? 'كلمة المرور' : 'Password'}
               </label>
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="text-[10px] text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200"
+                className="text-[10px] text-neutral-400 hover:text-white"
               >
                 {showPassword
                   ? (lang === 'ar' ? 'إخفاء' : 'Hide')
@@ -409,19 +396,19 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full px-4 py-2.5 rounded-2xl bg-neutral-50 dark:bg-neutral-800/80 text-xs font-medium text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 border border-neutral-200 dark:border-neutral-700 transition-all"
+              className="w-full px-3 py-2 rounded-xl bg-white/5 text-xs font-medium text-white placeholder:text-neutral-500 focus:outline-none focus:ring-1.5 focus:ring-emerald-500 border border-white/10 transition-all"
             />
           </div>
 
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-3 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md hover:shadow-lg transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {isLoading ? (
               <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>{lang === 'ar' ? 'جارٍ الاتصال بسوبابيز...' : 'Connecting to Supabase...'}</span>
+                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>{lang === 'ar' ? 'جارٍ الاتصال...' : 'Connecting...'}</span>
               </>
             ) : isRegisterMode ? (
               <span>{lang === 'ar' ? 'إنشاء حساب عبر Supabase' : 'Sign Up with Supabase'}</span>
@@ -433,9 +420,9 @@ export default function LoginPage() {
       </div>
 
       {/* Footer Info */}
-      <div className="w-full max-w-sm sm:max-w-md mx-auto text-center text-[11px] text-neutral-400 font-medium py-3">
+      <footer className="w-full max-w-sm sm:max-w-md mx-auto text-center text-[10px] text-neutral-500 font-medium shrink-0">
         <span>BlinkFarms — NASA Space Apps Challenge 2026</span>
-      </div>
+      </footer>
     </main>
   );
 }
