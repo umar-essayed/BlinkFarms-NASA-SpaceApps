@@ -5,6 +5,7 @@ import Script from 'next/script';
 import { useRouter } from 'next/navigation';
 import { Language } from '@/lib/types';
 import { UserProfile } from '@/components/AuthGateway';
+import { supabase } from '@/lib/supabaseClient';
 
 declare global {
   interface Window {
@@ -18,9 +19,12 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isRegisterMode, setIsRegisterMode] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [authSuccess, setAuthSuccess] = useState<string | null>(null);
+  const [googleLoaded, setGoogleLoaded] = useState(false);
   const googleBtnContainerRef = useRef<HTMLDivElement>(null);
 
   const GOOGLE_CLIENT_ID =
@@ -31,7 +35,7 @@ export default function LoginPage() {
     const savedLang = localStorage.getItem('blinkfarms_lang') as Language;
     if (savedLang) setLang(savedLang);
 
-    // Check if already logged in
+    // Check if user is already logged in
     const savedUser = localStorage.getItem('blinkfarms_auth_user');
     if (savedUser) {
       router.replace('/');
@@ -56,7 +60,7 @@ export default function LoginPage() {
     }
   };
 
-  // Google Sign-In Handler
+  // Google Sign-In Callback
   const handleGoogleCredentialResponse = async (response: any) => {
     if (!response || !response.credential) {
       setAuthError(lang === 'ar' ? 'فشل تسجيل الدخول عبر Google' : 'Google sign-in failed');
@@ -81,7 +85,7 @@ export default function LoginPage() {
       role: 'farmer',
     };
 
-    // Sync with backend API
+    // Non-blocking sync with backend
     try {
       await fetch('/api/auth/google', {
         method: 'POST',
@@ -92,7 +96,7 @@ export default function LoginPage() {
         }),
       });
     } catch (e) {
-      // Non-blocking sync
+      // Non-blocking
     }
 
     handleSuccessfulAuth(realUser);
@@ -101,32 +105,37 @@ export default function LoginPage() {
   // Initialize Google Identity Services
   const initGoogleIdentity = () => {
     if (typeof window !== 'undefined' && window.google?.accounts?.id) {
-      window.google.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID,
-        callback: handleGoogleCredentialResponse,
-        auto_select: false,
-        cancel_on_tap_outside: true,
-      });
-
-      if (googleBtnContainerRef.current) {
-        googleBtnContainerRef.current.innerHTML = '';
-        window.google.accounts.id.renderButton(googleBtnContainerRef.current, {
-          type: 'standard',
-          theme: 'outline',
-          size: 'large',
-          text: 'continue_with',
-          shape: 'pill',
-          logo_alignment: 'left',
-          width: '340',
-          locale: lang === 'ar' ? 'ar' : 'en',
+      setGoogleLoaded(true);
+      try {
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleGoogleCredentialResponse,
+          auto_select: false,
+          cancel_on_tap_outside: true,
         });
+
+        if (googleBtnContainerRef.current) {
+          googleBtnContainerRef.current.innerHTML = '';
+          window.google.accounts.id.renderButton(googleBtnContainerRef.current, {
+            type: 'standard',
+            theme: 'outline',
+            size: 'large',
+            text: 'continue_with',
+            shape: 'pill',
+            logo_alignment: 'left',
+            width: 270,
+            locale: lang === 'ar' ? 'ar' : 'en',
+          });
+        }
+      } catch (err) {
+        console.warn('Error initializing Google GSI button:', err);
       }
     }
   };
 
   useEffect(() => {
     initGoogleIdentity();
-  }, [lang]);
+  }, [lang, googleLoaded]);
 
   const toggleLang = () => {
     const nextLang = lang === 'ar' ? 'en' : 'ar';
@@ -142,21 +151,91 @@ export default function LoginPage() {
     router.push('/');
   };
 
-  const handleEmailAuth = (e: React.FormEvent) => {
+  // Real Supabase Email/Password Authentication
+  const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) return;
+    if (!email.trim() || !password.trim()) {
+      setAuthError(lang === 'ar' ? 'يرجى إدخال البريد الإلكتروني وكلمة المرور' : 'Please provide email and password');
+      return;
+    }
 
     setIsLoading(true);
-    setTimeout(() => {
+    setAuthError(null);
+    setAuthSuccess(null);
+
+    try {
+      if (isRegisterMode) {
+        // --- 1. Supabase User Registration ---
+        const { data, error } = await supabase.auth.signUp({
+          email: email.trim(),
+          password: password.trim(),
+          options: {
+            data: {
+              name: name.trim() || email.split('@')[0],
+              role: 'farmer',
+            },
+          },
+        });
+
+        if (error) throw error;
+
+        const newUser: UserProfile = {
+          id: data.user?.id || `u_${Date.now()}`,
+          name: name.trim() || data.user?.user_metadata?.name || email.split('@')[0],
+          email: email.trim(),
+          role: 'farmer',
+        };
+
+        if (data.session) {
+          // Direct login without required email confirmation
+          handleSuccessfulAuth(newUser);
+        } else {
+          // Email confirmation is enabled in Supabase project
+          setAuthSuccess(
+            lang === 'ar'
+              ? 'تم إنشاء الحساب بنجاح! إذا كانت رسالة التأكيد مطلوبة تفقد بريدك، أو يمكنك الدخول مباشرة الآن.'
+              : 'Account created! Please check your email or proceed to sign in.'
+          );
+          // Also allow immediate transition
+          handleSuccessfulAuth(newUser);
+        }
+      } else {
+        // --- 2. Supabase User Sign In ---
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password: password.trim(),
+        });
+
+        if (error) throw error;
+
+        if (data.user) {
+          const loggedUser: UserProfile = {
+            id: data.user.id,
+            name: data.user.user_metadata?.name || data.user.email?.split('@')[0] || (lang === 'ar' ? 'مزارع معتمد' : 'Verified Farmer'),
+            email: data.user.email || email.trim(),
+            role: 'farmer',
+          };
+          handleSuccessfulAuth(loggedUser);
+        }
+      }
+    } catch (err: any) {
+      console.error('Supabase auth error:', err);
+      let errMsg = err.message || 'حدث خطأ أثناء المصادقة';
+      
+      // Friendly localized error messages
+      if (errMsg.includes('Invalid login credentials')) {
+        errMsg = lang === 'ar' ? 'بيانات الدخول غير صحيحة، تأكد من البريد وكلمة المرور' : 'Invalid email or password';
+      } else if (errMsg.includes('User already registered')) {
+        errMsg = lang === 'ar' ? 'هذا البريد مسجل مسبقاً، يرجى التبديل لتسجيل الدخول' : 'User already registered. Please sign in';
+      } else if (errMsg.includes('Password should be at least')) {
+        errMsg = lang === 'ar' ? 'كلمة المرور يجب ألا تقل عن 6 أحرف' : 'Password must be at least 6 characters';
+      } else if (errMsg.includes('Email not confirmed')) {
+        errMsg = lang === 'ar' ? 'يرجى تأكيد بريدك الإلكتروني أولاً أو تواصل مع الدعم' : 'Email not confirmed yet';
+      }
+      setAuthError(errMsg);
+    } finally {
       setIsLoading(false);
-      const user: UserProfile = {
-        id: `u_${Date.now()}`,
-        name: name.trim() || email.split('@')[0],
-        email: email.trim(),
-        role: 'farmer',
-      };
-      handleSuccessfulAuth(user);
-    }, 400);
+    }
   };
 
   return (
@@ -172,81 +251,130 @@ export default function LoginPage() {
       />
 
       {/* Top Bar with Language Toggle */}
-      <div className="w-full max-w-md mx-auto flex justify-end">
+      <div className="w-full max-w-sm sm:max-w-md mx-auto flex justify-between items-center py-2">
+        <div className="flex items-center gap-2">
+          <img src="/logo.png" alt="BlinkFarms Logo" className="w-8 h-8 object-contain" />
+          <span className="font-black text-sm tracking-tight text-neutral-800 dark:text-neutral-200">
+            BlinkFarms
+          </span>
+        </div>
         <button
           onClick={toggleLang}
-          className="text-xs font-bold px-3 py-1.5 rounded-xl bg-white dark:bg-neutral-800 shadow-sm border border-black/5 dark:border-white/10 text-neutral-700 dark:text-neutral-200 active:scale-95 transition-all"
+          className="text-xs font-bold px-3 py-1.5 rounded-full bg-white dark:bg-neutral-800 shadow-sm border border-black/5 dark:border-white/10 text-neutral-700 dark:text-neutral-200 active:scale-95 transition-all hover:bg-neutral-50"
         >
           {lang === 'ar' ? 'English' : 'عربي'}
         </button>
       </div>
 
       {/* Main Login Card */}
-      <div className="w-full max-w-md mx-auto bg-white dark:bg-neutral-900 rounded-3xl p-6 sm:p-8 shadow-xl border border-black/5 dark:border-white/10 space-y-6 my-auto">
+      <div className="w-full max-w-sm sm:max-w-md mx-auto bg-white dark:bg-neutral-900 rounded-[2rem] p-6 sm:p-8 shadow-xl border border-black/5 dark:border-white/10 space-y-5 my-auto">
         {/* Brand Header */}
-        <div className="text-center space-y-2">
-          <img
-            src="/logo.png"
-            alt="BlinkFarms"
-            className="w-16 h-16 mx-auto object-contain drop-shadow-md"
-          />
+        <div className="text-center space-y-1.5">
           <h1 className="text-xl sm:text-2xl font-black text-neutral-900 dark:text-white tracking-tight">
-            {lang === 'ar' ? 'تسجيل الدخول' : 'Sign In to BlinkFarms'}
+            {isRegisterMode
+              ? (lang === 'ar' ? 'إنشاء حساب مزارع جديد' : 'Create Farmer Account')
+              : (lang === 'ar' ? 'تسجيل الدخول' : 'Welcome Back')}
           </h1>
           <p className="text-xs text-neutral-500 dark:text-neutral-400">
             {lang === 'ar'
-              ? 'سجّل دخولك لحفظ بيانات أرضك وتاريخ ذاكرة الحقل بأمان'
-              : 'Log in to securely link your field memory and crop records'}
+              ? 'سجّل دخولك لحفظ بيانات أرضك وربطها بنظام ناسا للرصد الزراعي'
+              : 'Sign in to access your NASA Earth Observation farm records'}
           </p>
         </div>
 
+        {/* Tab Switcher */}
+        <div className="grid grid-cols-2 p-1 bg-neutral-100 dark:bg-neutral-800/80 rounded-2xl text-xs font-bold">
+          <button
+            type="button"
+            onClick={() => {
+              setIsRegisterMode(false);
+              setAuthError(null);
+              setAuthSuccess(null);
+            }}
+            className={`py-2 rounded-xl transition-all ${
+              !isRegisterMode
+                ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
+                : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'
+            }`}
+          >
+            {lang === 'ar' ? 'تسجيل الدخول' : 'Sign In'}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setIsRegisterMode(true);
+              setAuthError(null);
+              setAuthSuccess(null);
+            }}
+            className={`py-2 rounded-xl transition-all ${
+              isRegisterMode
+                ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
+                : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'
+            }`}
+          >
+            {lang === 'ar' ? 'حساب جديد' : 'Sign Up'}
+          </button>
+        </div>
+
+        {/* Alerts */}
         {authError && (
-          <div className="p-3 rounded-2xl bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-300 text-xs font-bold text-center">
-            {authError}
+          <div className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/40 text-rose-700 dark:text-rose-300 text-xs font-semibold text-center flex items-center justify-center gap-2">
+            <span>⚠️</span>
+            <span>{authError}</span>
           </div>
         )}
 
-        {/* Real Google OAuth Button Container */}
-        <div className="space-y-3">
-          <div className="flex justify-center w-full min-h-[44px]">
-            <div ref={googleBtnContainerRef} id="googleSignInContainer" className="flex justify-center" />
+        {authSuccess && (
+          <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-300 text-xs font-semibold text-center flex items-center justify-center gap-2">
+            <span>✅</span>
+            <span>{authSuccess}</span>
           </div>
+        )}
 
+        {/* Sleek Google Sign-In Container */}
+        <div className="space-y-2 pt-1">
+          <div className="w-full flex justify-center items-center min-h-[44px]">
+            <div
+              ref={googleBtnContainerRef}
+              id="googleSignInContainer"
+              className="flex justify-center items-center w-full max-w-[280px]"
+            />
+          </div>
           <p className="text-[11px] text-center text-neutral-400">
             {lang === 'ar'
-              ? 'تسجيل دخول موثق وآمن عبر حساب Google الرسمي'
-              : 'Verified & secure login via official Google OAuth'}
+              ? 'تسجيل سريع ومباشر بحساب Google'
+              : 'Direct one-click sign in with Google'}
           </p>
         </div>
 
         {/* Divider */}
         <div className="flex items-center gap-3">
           <div className="h-px flex-1 bg-black/10 dark:bg-white/10" />
-          <span className="text-[11px] text-neutral-400 font-medium">
+          <span className="text-[11px] text-neutral-400 font-bold uppercase tracking-wider">
             {lang === 'ar' ? 'أو بالبريد الإلكتروني' : 'or with email'}
           </span>
           <div className="h-px flex-1 bg-black/10 dark:bg-white/10" />
         </div>
 
-        {/* Email & Password Form */}
-        <form onSubmit={handleEmailAuth} className="space-y-3">
+        {/* Supabase Email/Password Form */}
+        <form onSubmit={handleEmailAuth} className="space-y-3.5">
           {isRegisterMode && (
             <div>
-              <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
-                {lang === 'ar' ? 'الاسم الكامل أو اسم المزرعة' : 'Full Name or Farm Name'}
+              <label className="block text-[11px] font-bold text-neutral-600 dark:text-neutral-300 mb-1">
+                {lang === 'ar' ? 'اسم المزارع أو الحقل' : 'Farmer or Field Name'}
               </label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder={lang === 'ar' ? 'مثال: مزرعة الوادي الأخضر' : 'e.g. Green Valley Farm'}
-                className="w-full px-3.5 py-2.5 rounded-2xl bg-neutral-100 dark:bg-neutral-800 text-xs font-medium text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-600 border border-black/5 dark:border-white/5"
+                placeholder={lang === 'ar' ? 'مثال: مزرعة الحاج عبد الله' : 'e.g. Green Valley Farm'}
+                className="w-full px-4 py-2.5 rounded-2xl bg-neutral-50 dark:bg-neutral-800/80 text-xs font-medium text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 border border-neutral-200 dark:border-neutral-700 transition-all"
               />
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+            <label className="block text-[11px] font-bold text-neutral-600 dark:text-neutral-300 mb-1">
               {lang === 'ar' ? 'البريد الإلكتروني' : 'Email Address'}
             </label>
             <input
@@ -255,54 +383,58 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="farmer@example.com"
-              className="w-full px-3.5 py-2.5 rounded-2xl bg-neutral-100 dark:bg-neutral-800 text-xs font-medium text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-600 border border-black/5 dark:border-white/5"
+              className="w-full px-4 py-2.5 rounded-2xl bg-neutral-50 dark:bg-neutral-800/80 text-xs font-medium text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 border border-neutral-200 dark:border-neutral-700 transition-all"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
-              {lang === 'ar' ? 'كلمة المرور' : 'Password'}
-            </label>
+            <div className="flex justify-between items-center mb-1">
+              <label className="block text-[11px] font-bold text-neutral-600 dark:text-neutral-300">
+                {lang === 'ar' ? 'كلمة المرور' : 'Password'}
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="text-[10px] text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200"
+              >
+                {showPassword
+                  ? (lang === 'ar' ? 'إخفاء' : 'Hide')
+                  : (lang === 'ar' ? 'إظهار' : 'Show')}
+              </button>
+            </div>
             <input
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               required
+              minLength={6}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full px-3.5 py-2.5 rounded-2xl bg-neutral-100 dark:bg-neutral-800 text-xs font-medium text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-600 border border-black/5 dark:border-white/5"
+              className="w-full px-4 py-2.5 rounded-2xl bg-neutral-50 dark:bg-neutral-800/80 text-xs font-medium text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 border border-neutral-200 dark:border-neutral-700 transition-all"
             />
           </div>
 
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-3 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-bold shadow-md transition-all active:scale-95 disabled:opacity-50"
+            className="w-full py-3 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
           >
-            {isLoading
-              ? (lang === 'ar' ? 'جارٍ التحقق...' : 'Verifying...')
-              : isRegisterMode
-              ? (lang === 'ar' ? 'إنشاء حساب مزارع جديد' : 'Create Farmer Account')
-              : (lang === 'ar' ? 'تسجيل الدخول' : 'Sign In')}
+            {isLoading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>{lang === 'ar' ? 'جارٍ الاتصال بسوبابيز...' : 'Connecting to Supabase...'}</span>
+              </>
+            ) : isRegisterMode ? (
+              <span>{lang === 'ar' ? 'إنشاء حساب عبر Supabase' : 'Sign Up with Supabase'}</span>
+            ) : (
+              <span>{lang === 'ar' ? 'تسجيل الدخول' : 'Sign In'}</span>
+            )}
           </button>
         </form>
-
-        {/* Toggle Register / Login */}
-        <div className="text-center pt-1">
-          <button
-            type="button"
-            onClick={() => setIsRegisterMode(!isRegisterMode)}
-            className="text-xs text-neutral-500 hover:text-black dark:hover:text-white font-medium"
-          >
-            {isRegisterMode
-              ? (lang === 'ar' ? 'لديك حساب بالفعل؟ تسجيل الدخول' : 'Already have an account? Sign In')
-              : (lang === 'ar' ? 'ليس لديك حساب؟ إنشاء حساب مزارع جديد' : 'New farmer? Create an account')}
-          </button>
-        </div>
       </div>
 
       {/* Footer Info */}
-      <div className="w-full max-w-md mx-auto text-center text-[11px] text-neutral-400 font-medium py-2">
-        <span>BlinkFarms — NASA FieldShift & VeloceRoot</span>
+      <div className="w-full max-w-sm sm:max-w-md mx-auto text-center text-[11px] text-neutral-400 font-medium py-3">
+        <span>BlinkFarms — NASA Space Apps Challenge 2026</span>
       </div>
     </main>
   );

@@ -3,6 +3,8 @@
 // Relational Tables + pgvector Similarity Functions
 // ==============================================================================
 
+import { createClient } from '@supabase/supabase-js';
+
 export interface FarmRecord {
   id: string;
   name: string;
@@ -24,11 +26,19 @@ export interface FieldMemoryRecord {
   previous_crop_id: string;
 }
 
-// Environment keys (optional, with fallback)
+// Environment keys (strictly from environment variables)
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 export const isSupabaseConfigured = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
+
+// Official Supabase JS Client for Auth & Database operations
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+  },
+});
 
 /**
  * Searches the semantic vector knowledge base via Supabase Edge / RPC
