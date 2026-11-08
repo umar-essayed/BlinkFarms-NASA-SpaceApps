@@ -1,0 +1,127 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --apple-bg: #F5F5F7;
+  --apple-card: rgba(255, 255, 255, 0.90);
+  --apple-border: rgba(0, 0, 0, 0.08);
+  --apple-text-main: #1D1D1F;
+  --apple-text-sub: #86868B;
+  --apple-blue: #0071E3;
+  --apple-green: #34C759;
+  --apple-amber: #FF9500;
+  --apple-red: #FF3B30;
+}
+
+html, body {
+  background-color: var(--apple-bg);
+  color: var(--apple-text-main);
+  font-family: 'Cairo', -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Glassmorphism Apple Card */
+.apple-card {
+  background: var(--apple-card);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--apple-border);
+  box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.04);
+}
+
+.apple-card-hover {
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.apple-card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 36px -4px rgba(0, 0, 0, 0.08);
+}
+
+/* Updated Tile Pulse Highlight */
+@keyframes tileHighlightAnimation {
+  0% {
+    box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.55), 0 8px 30px rgba(0, 113, 227, 0.2);
+    transform: scale(1.01);
+  }
+  50% {
+    box-shadow: 0 0 0 2px rgba(0, 113, 227, 0.3), 0 6px 20px rgba(0, 113, 227, 0.1);
+  }
+  100% {
+    box-shadow: none;
+    transform: scale(1);
+  }
+}
+
+.tile-updated-highlight {
+  animation: tileHighlightAnimation 1.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Smooth Fade In Keyframes */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slideUp {
+  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* NASA ECOSTRESS Thermal Infrared False-Color Palette */
+.thermal-satellite-layer {
+  filter: contrast(1.65) saturate(3.3) hue-rotate(150deg) brightness(0.92);
+}
+
+/* Hide scrollbar for clean chip lists */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.25);
+}
