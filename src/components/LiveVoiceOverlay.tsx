@@ -319,10 +319,14 @@ export default function LiveVoiceOverlay({
       {/* Top Header: Status & Close */}
       <div className="w-full max-w-xl flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2.5">
-          <span className="w-3 h-3 rounded-full bg-emerald-500 animate-ping" />
+          <img
+            src="/blink-ai-logo.png"
+            alt="Blink AI"
+            className="w-9 h-9 rounded-full object-cover border border-emerald-500/50 shadow-emerald-500/30 shadow-md shrink-0"
+          />
           <div className="flex flex-col">
             <span className="text-sm font-bold text-white flex items-center gap-1.5">
-              <span>BlinkFarms Live Voice</span>
+              <span>Blink AI Voice Mode</span>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-mono">
                 Groq 120B
               </span>
@@ -330,7 +334,7 @@ export default function LiveVoiceOverlay({
             <span className="text-[11px] text-neutral-400">
               {voiceState === 'listening' && (lang === 'ar' ? 'أنا سامعك.. اتفضل اتكلم' : 'Listening to you...')}
               {voiceState === 'processing' && (lang === 'ar' ? 'جاري التحليل واستدعاء بيانات ناسا...' : 'Processing with NASA Data...')}
-              {voiceState === 'speaking' && (lang === 'ar' ? 'المرشد يتحدث الآن' : 'Agent is speaking...')}
+              {voiceState === 'speaking' && (lang === 'ar' ? 'Blink AI يتحدث الآن' : 'Blink AI is speaking...')}
               {voiceState === 'idle' && (lang === 'ar' ? 'جاهز للمحادثة' : 'Ready')}
             </span>
           </div>
@@ -375,7 +379,7 @@ export default function LiveVoiceOverlay({
             }`}
           />
 
-          {/* Core Interactive Glowing Orb */}
+          {/* Core Interactive Glowing Orb with Blink AI Brand Logo */}
           <div
             onClick={() => {
               if (voiceState === 'listening') {
@@ -387,7 +391,7 @@ export default function LiveVoiceOverlay({
                 startListening();
               }
             }}
-            className={`relative z-10 w-44 h-44 sm:w-48 sm:h-48 rounded-full flex flex-col items-center justify-center cursor-pointer shadow-2xl transition-all duration-300 active:scale-95 ${
+            className={`relative z-10 w-44 h-44 sm:w-52 sm:h-52 rounded-full flex flex-col items-center justify-center cursor-pointer shadow-2xl transition-all duration-300 active:scale-95 p-3 ${
               voiceState === 'listening'
                 ? 'bg-gradient-to-tr from-emerald-600 to-teal-400 shadow-emerald-500/50'
                 : voiceState === 'processing'
@@ -397,13 +401,18 @@ export default function LiveVoiceOverlay({
                 : 'bg-gradient-to-tr from-neutral-800 to-neutral-700 shadow-black/50'
             }`}
           >
-            <div className="text-4xl mb-1">
-              {voiceState === 'listening' && '🎙️'}
-              {voiceState === 'processing' && '⚡'}
-              {voiceState === 'speaking' && '🔊'}
-              {voiceState === 'idle' && '🌱'}
-            </div>
-            <span className="text-[11px] font-bold text-white/90">
+            <img
+              src="/blink-ai-logo.png"
+              alt="Blink AI"
+              className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-2 border-white/30 shadow-2xl mb-1.5 transition-transform duration-200"
+              style={{
+                transform: voiceState === 'listening' ? `scale(${1 + volumeLevel / 180})` : undefined,
+              }}
+            />
+            <span className="text-[11px] font-black tracking-wide text-white drop-shadow">
+              Blink AI
+            </span>
+            <span className="text-[9px] font-semibold text-white/80">
               {voiceState === 'listening' && (lang === 'ar' ? 'المس للإرسال' : 'Tap to send')}
               {voiceState === 'processing' && (lang === 'ar' ? 'بيفكر...' : 'Thinking...')}
               {voiceState === 'speaking' && (lang === 'ar' ? 'المس للمقاطعة' : 'Tap to interrupt')}

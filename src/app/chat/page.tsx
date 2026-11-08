@@ -369,8 +369,8 @@ export default function DedicatedChatPage() {
           <div className="space-y-2.5 pb-2.5 border-b border-black/5 dark:border-white/10 shrink-0">
             <div className="flex items-center justify-between">
               <Link href="/" className="flex items-center gap-2">
-                <img src="/logo.png" alt="BlinkFarms" className="w-7 h-7 object-contain" />
-                <span className="font-black text-sm text-neutral-900 dark:text-white">BlinkFarms</span>
+                <img src="/blink-ai-logo.png" alt="Blink AI" className="w-7 h-7 rounded-full object-cover border border-emerald-500/40" />
+                <span className="font-black text-sm text-neutral-900 dark:text-white">Blink AI</span>
               </Link>
               <button
                 onClick={() => setIsSidebarOpen(false)}
@@ -492,10 +492,10 @@ export default function DedicatedChatPage() {
             </button>
 
             <div className="flex items-center gap-2 min-w-0">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+              <img src="/blink-ai-logo.png" alt="Blink AI" className="w-6 h-6 rounded-full object-cover border border-emerald-500/40 shrink-0 shadow-sm" />
               <div className="truncate">
                 <span className="text-xs font-bold text-neutral-900 dark:text-white block truncate">
-                  {activeSession?.title || (lang === 'ar' ? 'محادثة إرشادية' : 'Advisory Chat')}
+                  Blink AI — {activeSession?.title || (lang === 'ar' ? 'مساعدك الزراعي' : 'Advisor')}
                 </span>
               </div>
             </div>
@@ -536,9 +536,11 @@ export default function DedicatedChatPage() {
                 className={`flex gap-2.5 ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 {m.sender === 'assistant' && (
-                  <div className="w-7 h-7 rounded-full bg-blue-600/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 text-xs font-black">
-                    🌿
-                  </div>
+                  <img
+                    src="/blink-ai-logo.png"
+                    alt="Blink AI"
+                    className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover border border-emerald-500/40 shadow-sm shrink-0"
+                  />
                 )}
 
                 <div
@@ -581,9 +583,11 @@ export default function DedicatedChatPage() {
             {/* Clean 3-dots typing loader */}
             {isChatLoading && (
               <div className="flex gap-2.5 items-center justify-start">
-                <div className="w-7 h-7 rounded-full bg-blue-600/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 text-xs font-black">
-                  🌿
-                </div>
+                <img
+                  src="/blink-ai-logo.png"
+                  alt="Blink AI"
+                  className="w-7 h-7 rounded-full object-cover border border-emerald-500/40 shadow-sm shrink-0 animate-pulse"
+                />
                 <div className="bg-white dark:bg-neutral-800/90 border border-black/5 dark:border-white/5 rounded-2xl px-4 py-3 shadow-sm flex items-center gap-1.5">
                   <div className="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-400 animate-bounce" style={{ animationDelay: '0ms' }} />
                   <div className="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-400 animate-bounce" style={{ animationDelay: '150ms' }} />

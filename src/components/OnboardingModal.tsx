@@ -52,6 +52,14 @@ export default function OnboardingModal({
       highlight: 'تجديد النيتروجين الطبيعي، كسر دورات الآفات، وزيادة الأرباح.',
     },
     {
+      badge: 'Blink AI — المرشد الصوتي',
+      icon: '🤖',
+      logoImg: '/blink-ai-logo.png',
+      title: 'Blink AI — استشر مرشدك الزراعي بالصوت',
+      desc: 'بجانب الخرائط والمؤشرات، يمكنك التحدث مباشرة مع "Blink AI" بصوتك بالبلدي وسؤاله عن الري ومشاكل المحصول، وسيرد عليك صوتياً في جزء من الثانية مع حفظ كل كلمة في سجلك.',
+      highlight: 'شات صوتي وتفريغ نصي فوري مدعوم بموديل Groq 120B وأرصاد ناسا.',
+    },
+    {
       badge: 'ابدأ الآن',
       icon: '📍',
       title: 'اختر موقع حقلك للبدء',
@@ -81,6 +89,14 @@ export default function OnboardingModal({
       title: 'Field Memory & 3-Year Adaptive Rotation',
       desc: 'The system tracks Field Memory (F_state) to diagnose subsoil hardpans and salinity, recommending a 3-year rotation saving 36% water while replenishing organic nitrogen.',
       highlight: 'Replenishes biological nitrogen, interrupts pests, and secures margins.',
+    },
+    {
+      badge: 'Blink AI — Live Voice',
+      icon: '🤖',
+      logoImg: '/blink-ai-logo.png',
+      title: 'Blink AI — Your Voice Agricultural Copilot',
+      desc: 'Speak directly with Blink AI using your voice. Ask about irrigation, soil compaction, or crop sequences, and receive spoken guidance in real time auto-saved to your chat logs.',
+      highlight: 'Live interactive voice chat powered by Groq 120B and NASA Earth observations.',
     },
     {
       badge: 'Get Started',
@@ -137,7 +153,15 @@ export default function OnboardingModal({
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
           {/* Badge & Icon */}
           <div className="flex items-center gap-2">
-            <span className="text-2xl sm:text-3xl">{current.icon}</span>
+            {(current as any).logoImg ? (
+              <img
+                src={(current as any).logoImg}
+                alt="Blink AI"
+                className="w-9 h-9 rounded-full object-cover border border-emerald-500/50 shadow-sm"
+              />
+            ) : (
+              <span className="text-2xl sm:text-3xl">{current.icon}</span>
+            )}
             <span className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400">
               {current.badge}
             </span>

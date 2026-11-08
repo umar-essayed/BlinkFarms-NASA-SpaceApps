@@ -42,6 +42,17 @@ export default function OnboardingStory({ lang, onFinish }: OnboardingStoryProps
       statLabel: 'ترشيد استهلاك مع تعظيم الأرباح المالية',
       gradient: 'from-amber-600 to-orange-700',
     },
+    {
+      badge: 'المرشد الصوتي التفاعلي',
+      icon: '🤖',
+      logoImg: '/blink-ai-logo.png',
+      title: 'Blink AI — مرشدك الزراعي الذكي بالصوت',
+      subtitle: 'تحدث معه بالبلدي واستشره في ري أرضك ودورتك',
+      desc: 'مدعوم بنظام صوتي حي مرتبط مباشرة بذاكرة الحقل وأرصاد ناسا الفضائية. اضغط على المايك وتحدث معه بصوتك كأنك تستشير خبيراً زراعياً يقف معك في قلب الغيط!',
+      stat: 'Live Voice',
+      statLabel: 'محادثة صوتية ذكية تفاعلية وتفريغ نصي دائم',
+      gradient: 'from-emerald-600 to-teal-700',
+    },
   ];
 
   const SLIDES_EN = [
@@ -74,6 +85,17 @@ export default function OnboardingStory({ lang, onFinish }: OnboardingStoryProps
       stat: '-36% Water',
       statLabel: 'Average irrigation reduction with higher yields',
       gradient: 'from-amber-600 to-orange-700',
+    },
+    {
+      badge: 'Live Voice Copilot',
+      icon: '🤖',
+      logoImg: '/blink-ai-logo.png',
+      title: 'Blink AI — Your Voice Agricultural Copilot',
+      subtitle: 'Speak naturally to analyze crops and irrigation',
+      desc: 'Coupled directly with NASA Earth telemetry and field history. Tap the microphone and have real-time live conversations with your AI agronomist anywhere in the field!',
+      stat: 'Live Voice',
+      statLabel: 'Real-time conversational agricultural intelligence',
+      gradient: 'from-emerald-600 to-teal-700',
     },
   ];
 
@@ -122,13 +144,28 @@ export default function OnboardingStory({ lang, onFinish }: OnboardingStoryProps
           <img
             src="/logo.png"
             alt="BlinkFarms"
-            className="w-8 h-8 sm:w-10 sm:h-10 object-contain drop-shadow-md"
+            className="w-7 h-7 sm:w-8 sm:h-8 object-contain drop-shadow-md"
           />
-          <span className="text-base sm:text-lg font-black tracking-tight text-white">BlinkFarms</span>
+          <span className="text-sm sm:text-base font-black tracking-tight text-white">BlinkFarms</span>
+          <span className="text-white/40">×</span>
+          <img
+            src="/blink-ai-logo.png"
+            alt="Blink AI"
+            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover border border-emerald-500/50 shadow-sm"
+          />
+          <span className="text-sm sm:text-base font-black tracking-tight text-emerald-400">Blink AI</span>
         </div>
 
-        <div className="w-14 h-14 sm:w-18 sm:h-18 mx-auto rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center text-3xl sm:text-4xl shadow-xl">
-          {cur.icon}
+        <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center text-3xl sm:text-4xl shadow-xl overflow-hidden p-1">
+          {(cur as any).logoImg ? (
+            <img
+              src={(cur as any).logoImg}
+              alt="Blink AI"
+              className="w-full h-full rounded-xl object-cover shadow-inner"
+            />
+          ) : (
+            cur.icon
+          )}
         </div>
 
         <div className="space-y-1 sm:space-y-1.5">
