@@ -322,6 +322,7 @@ export default function LoginPage() {
         <div className="space-y-1.5 pt-0.5">
           <div className="w-full flex justify-center items-center min-h-[42px]">
             <div
+              key={lang}
               ref={googleBtnContainerRef}
               id="googleSignInContainer"
               className="flex justify-center items-center w-full max-w-[260px] overflow-hidden"

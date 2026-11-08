@@ -18,11 +18,12 @@ export interface ChatSession {
 export default function DedicatedChatPage() {
   const router = useRouter();
   const [lang, setLang] = useState<Language>('ar');
-  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false); // Start collapsed so user sees active chat immediately
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string>('');
   const [inputText, setInputText] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
+  const [centralMemory, setCentralMemory] = useState<string[]>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Field & User Context State
@@ -32,10 +33,18 @@ export default function DedicatedChatPage() {
   const [wizardData, setWizardData] = useState<any>(null);
   const [weatherSummary, setWeatherSummary] = useState<string>('حرارة معتدلة 26°C، رطوبة متزنة، شمس ساطعة');
 
-  // Initialize and load sessions from LocalStorage
+  // Initialize and load sessions & central memory from LocalStorage
   useEffect(() => {
     const savedLang = localStorage.getItem('blinkfarms_lang') as Language;
     if (savedLang) setLang(savedLang);
+
+    // Read Central Cross-Session Memory
+    const savedCentralMem = localStorage.getItem('blinkfarms_central_memory');
+    if (savedCentralMem) {
+      try {
+        setCentralMemory(JSON.parse(savedCentralMem));
+      } catch {}
+    }
 
     // Read logged in user
     const savedUser = localStorage.getItem('blinkfarms_auth_user');
@@ -80,20 +89,7 @@ export default function DedicatedChatPage() {
     const welcomeMsg: ChatMessage = {
       id: `welcome_${Date.now()}`,
       sender: 'assistant',
-      content:
-        currentLang === 'ar'
-          ? `يا أهلاً بيك يا ${farmerName}! أنا **المرشد الزراعي الرقمي** في BlinkFarms.
-أرضك وسجلاتها محفوظة في ذاكرتي بالكامل؛ مطلع لحظياً على حرارة أوراق النبات بالأشعة تحت الحمراء، رطوبة الجذور، وأرصاد ناسا الجوية لحقلك (${areaFeddan} فدان).
-
-جاهز لأي استفسار:
-- كمية وموعد الري الدقيق اليوم بوحدة **م³ / فدان**؟
-- تخطيط الدورة الزراعية لـ 3 سنوات لترشيد المياه وزيادة الإنتاج؟
-- فك كتمة وانضغاط باطن الأرض (الطبقة الصماء) بيولوجياً؟
-اطلب اللي في بالك!`
-          : `Welcome ${farmerName}! I am your **BlinkFarms Autonomous Agricultural Agent**.
-I am directly connected to your field memory, ECOSTRESS thermal canopy fever radar, and NASA POWER meteorology for your ${areaFeddan}-feddan farmland.
-
-Ask me anything about daily irrigation volume (m³/feddan), 3-year regenerative crop rotations, or biological subsoil hardpan remediation!`,
+      content: currentLang === 'ar' ? 'أهلاً بك! كيف أساعدك اليوم؟' : 'Welcome! How can I help today?',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
@@ -173,7 +169,7 @@ Ask me anything about daily irrigation volume (m³/feddan), 3-year regenerative 
     const currentMessages = [...activeSession.messages, userMsg];
     let newTitle = activeSession.title;
     if (activeSession.messages.length <= 1) {
-      newTitle = q.length > 32 ? q.substring(0, 32) + '...' : q;
+      newTitle = q.length > 28 ? q.substring(0, 28) + '...' : q;
     }
 
     const updatedSession: ChatSession = {
@@ -196,6 +192,7 @@ Ask me anything about daily irrigation volume (m³/feddan), 3-year regenerative 
         body: JSON.stringify({
           message: q,
           lang,
+          centralMemory, // Cross-session permanent memory
           history: currentMessages.map((m) => ({
             role: m.sender === 'assistant' ? 'assistant' : 'user',
             content: m.content || '',
@@ -224,12 +221,27 @@ Ask me anything about daily irrigation volume (m³/feddan), 3-year regenerative 
       });
 
       const data = await res.json();
-      const botReply = data.reply || (lang === 'ar' ? 'تم استلام استفسارك يا طيب.' : 'Query processed.');
+      let rawBotReply = data.reply || (lang === 'ar' ? 'تم استلام استفسارك يا طيب.' : 'Query processed.');
+
+      // Extract and save central memory tags [MEMORY: key = value]
+      const memMatches = rawBotReply.match(/\[MEMORY:\s*(.*?)\]/g);
+      if (memMatches) {
+        let currentMem: string[] = JSON.parse(localStorage.getItem('blinkfarms_central_memory') || '[]');
+        memMatches.forEach((mStr: string) => {
+          const item = mStr.replace(/\[MEMORY:\s*|\]/g, '').trim();
+          if (item && !currentMem.includes(item)) {
+            currentMem.push(item);
+          }
+        });
+        localStorage.setItem('blinkfarms_central_memory', JSON.stringify(currentMem));
+        setCentralMemory(currentMem);
+        rawBotReply = rawBotReply.replace(/\[MEMORY:\s*(.*?)\]/g, '').trim();
+      }
 
       const botMsg: ChatMessage = {
         id: `bot_${Date.now()}`,
         sender: 'assistant',
-        content: botReply,
+        content: rawBotReply,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
 
@@ -252,7 +264,7 @@ Ask me anything about daily irrigation volume (m³/feddan), 3-year regenerative 
   return (
     <div
       dir={lang === 'ar' ? 'rtl' : 'ltr'}
-      className="flex h-screen w-full bg-[#F8F9FA] dark:bg-[#0A0A0C] text-[#1D1D1F] dark:text-[#F5F5F7] overflow-hidden font-sans select-none"
+      className="flex h-[100dvh] max-h-[100dvh] w-full bg-[#F8F9FA] dark:bg-[#0A0A0C] text-[#1D1D1F] dark:text-[#F5F5F7] overflow-hidden font-sans select-none"
     >
       {/* =========================================================================
           1. CHATGPT-LIKE COLLAPSIBLE SIDEBAR
@@ -266,47 +278,47 @@ Ask me anything about daily irrigation volume (m³/feddan), 3-year regenerative 
       )}
 
       <aside
-        className={`fixed md:static inset-y-0 z-50 flex flex-col justify-between w-[290px] bg-white dark:bg-neutral-900 border-x border-black/5 dark:border-white/10 transition-transform duration-300 ease-in-out shrink-0 ${
+        className={`fixed md:static inset-y-0 z-50 flex flex-col justify-between w-[290px] bg-white dark:bg-neutral-900 border-x border-black/5 dark:border-white/10 transition-all duration-300 ease-in-out shrink-0 ${
           isSidebarOpen
             ? 'translate-x-0'
             : lang === 'ar'
-            ? 'translate-x-full md:translate-x-0 md:w-0 md:border-none md:overflow-hidden'
-            : '-translate-x-full md:translate-x-0 md:w-0 md:border-none md:overflow-hidden'
+            ? 'translate-x-full md:w-0 md:border-none md:overflow-hidden'
+            : '-translate-x-full md:w-0 md:border-none md:overflow-hidden'
         }`}
       >
-        <div className="flex flex-col h-full p-4 overflow-hidden">
+        <div className="flex flex-col h-full p-3.5 overflow-hidden">
           {/* Sidebar Top: Brand & New Chat */}
-          <div className="space-y-3 pb-3 border-b border-black/5 dark:border-white/10 shrink-0">
+          <div className="space-y-2.5 pb-2.5 border-b border-black/5 dark:border-white/10 shrink-0">
             <div className="flex items-center justify-between">
               <Link href="/" className="flex items-center gap-2">
-                <img src="/logo.png" alt="BlinkFarms" className="w-8 h-8 object-contain" />
+                <img src="/logo.png" alt="BlinkFarms" className="w-7 h-7 object-contain" />
                 <span className="font-black text-sm text-neutral-900 dark:text-white">BlinkFarms</span>
               </Link>
               <button
                 onClick={() => setIsSidebarOpen(false)}
-                className="md:hidden p-1.5 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400"
+                className="p-1 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400"
               >
                 ✕
               </button>
             </div>
 
-            {/* New Chat Button (ChatGPT Style) */}
+            {/* New Chat Button */}
             <button
               onClick={() => {
                 createNewSession();
                 if (window.innerWidth < 768) setIsSidebarOpen(false);
               }}
-              className="w-full py-2.5 px-4 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-sm flex items-center justify-center gap-2 active:scale-95 transition-all"
+              className="w-full py-2 px-3.5 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-sm flex items-center justify-center gap-1.5 active:scale-95 transition-all"
             >
               <span className="text-base font-bold">+</span>
-              <span>{lang === 'ar' ? 'محادثة استشارية جديدة' : 'New Advisory Chat'}</span>
+              <span>{lang === 'ar' ? 'محادثة جديدة' : 'New Chat'}</span>
             </button>
           </div>
 
           {/* Sessions List */}
-          <div className="flex-1 overflow-y-auto py-3 space-y-1.5 scrollbar-none">
-            <span className="text-[11px] font-bold text-neutral-400 px-2 block mb-2">
-              {lang === 'ar' ? 'سجل المحادثات السابقة' : 'Chat History'}
+          <div className="flex-1 overflow-y-auto py-2 space-y-1 scrollbar-none">
+            <span className="text-[10px] font-bold text-neutral-400 px-2 block mb-1">
+              {lang === 'ar' ? 'المحادثات السابقة' : 'Past Chats'}
             </span>
 
             {sessions.map((s) => (
@@ -316,21 +328,21 @@ Ask me anything about daily irrigation volume (m³/feddan), 3-year regenerative 
                   setActiveSessionId(s.id);
                   if (window.innerWidth < 768) setIsSidebarOpen(false);
                 }}
-                className={`group flex items-center justify-between p-2.5 rounded-2xl cursor-pointer text-xs font-bold transition-all ${
+                className={`group flex items-center justify-between p-2 rounded-xl cursor-pointer text-xs font-semibold transition-all ${
                   activeSessionId === s.id
-                    ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-500/20'
+                    ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-bold'
                     : 'hover:bg-neutral-100 dark:hover:bg-neutral-800/60 text-neutral-700 dark:text-neutral-300'
                 }`}
               >
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-sm shrink-0">💬</span>
-                  <span className="truncate">{s.title}</span>
+                  <span className="text-xs shrink-0">💬</span>
+                  <span className="truncate text-[11px]">{s.title}</span>
                 </div>
 
                 <button
                   onClick={(e) => handleDeleteSession(s.id, e)}
-                  title={lang === 'ar' ? 'حذف المحادثة' : 'Delete'}
-                  className="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-red-50 text-red-500 transition-opacity"
+                  title={lang === 'ar' ? 'حذف' : 'Delete'}
+                  className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-red-500 hover:bg-red-50 text-[10px] transition-opacity"
                 >
                   🗑️
                 </button>
@@ -338,163 +350,186 @@ Ask me anything about daily irrigation volume (m³/feddan), 3-year regenerative 
             ))}
           </div>
 
-          {/* Sidebar Bottom: Agent Memory Box */}
-          <div className="pt-3 border-t border-black/5 dark:border-white/10 space-y-2 shrink-0">
-            <div className="p-3 rounded-2xl bg-neutral-50 dark:bg-neutral-800/60 space-y-1.5 border border-black/5 dark:border-white/5">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-neutral-800 dark:text-neutral-200">
-                <span>🧠</span>
-                <span>{lang === 'ar' ? 'ذاكرة المرشد لحقلك' : 'Agent Field Memory'}</span>
+          {/* Sidebar Bottom: Cross-Session Central Memory Box */}
+          <div className="pt-2.5 border-t border-black/5 dark:border-white/10 space-y-2 shrink-0">
+            <div className="p-2.5 rounded-2xl bg-neutral-50 dark:bg-neutral-800/60 space-y-1.5 border border-black/5 dark:border-white/5">
+              <div className="flex items-center justify-between text-[11px] font-bold text-neutral-800 dark:text-neutral-200">
+                <div className="flex items-center gap-1.5">
+                  <span>🧠</span>
+                  <span>{lang === 'ar' ? 'الذاكرة المركزية الدائمة' : 'Central Memory'}</span>
+                </div>
+                {centralMemory.length > 0 && (
+                  <button
+                    onClick={() => {
+                      localStorage.removeItem('blinkfarms_central_memory');
+                      setCentralMemory([]);
+                    }}
+                    title={lang === 'ar' ? 'مسح الذاكرة' : 'Clear Memory'}
+                    className="text-[9px] text-neutral-400 hover:text-red-500"
+                  >
+                    {lang === 'ar' ? 'مسح' : 'Clear'}
+                  </button>
+                )}
               </div>
-              <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-tight">
-                {lang === 'ar'
-                  ? `الحقل: ${fieldName} (${areaFeddan} فدان) — المحصول السابق: ${wizardData?.previousCrop || 'برسيم'} — التربة: ${wizardData?.soilType || 'طميية'}.`
-                  : `Field: ${fieldName} (${areaFeddan} feddans) — Crop: ${wizardData?.previousCrop || 'Clover'}.`}
-              </p>
+              <div className="space-y-1">
+                {centralMemory.length === 0 ? (
+                  <p className="text-[10px] text-neutral-400 italic">
+                    {lang === 'ar' ? 'يتعلم البوت تلقائياً من المحادثات' : 'Learns facts across chats'}
+                  </p>
+                ) : (
+                  centralMemory.map((mem, idx) => (
+                    <div key={idx} className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium truncate flex items-center gap-1">
+                      <span>•</span>
+                      <span>{mem}</span>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
 
             <Link
               href="/"
-              className="w-full py-2 px-3 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 text-neutral-700 dark:text-neutral-300 text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+              className="w-full py-1.5 px-3 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 text-neutral-700 dark:text-neutral-300 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all"
             >
               <span>🛰️</span>
-              <span>{lang === 'ar' ? 'الرجوع للرادار والخريطة' : 'Back to Field Radar'}</span>
+              <span>{lang === 'ar' ? 'الرجوع للرادار والخريطة' : 'Back to Radar'}</span>
             </Link>
           </div>
         </div>
       </aside>
 
       {/* =========================================================================
-          2. MAIN CHAT WORKSPACE
+          2. MAIN CHAT WORKSPACE (STRICTLY ONE SCREEN - NO SCROLLBAR OUTSIDE)
          ========================================================================= */}
       <main className="flex-1 flex flex-col h-full overflow-hidden min-w-0">
         {/* Top Header Bar */}
-        <header className="h-14 px-4 sm:px-6 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md border-b border-black/5 dark:border-white/10 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3 min-w-0">
+        <header className="h-12 px-3 sm:px-5 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md border-b border-black/5 dark:border-white/10 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2.5 min-w-0">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="p-2 rounded-2xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 text-neutral-800 dark:text-neutral-200 text-sm font-bold transition-all active:scale-95"
-              title={lang === 'ar' ? 'القائمة الجانبية للشاتات' : 'Toggle Sidebar'}
+              className="p-1.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 text-neutral-800 dark:text-neutral-200 text-xs font-bold transition-all active:scale-95"
+              title={lang === 'ar' ? 'المحادثات والذاكرة' : 'Toggle Sidebar'}
             >
               ☰
             </button>
 
             <div className="flex items-center gap-2 min-w-0">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
-              <h2 className="text-xs sm:text-sm font-black text-neutral-900 dark:text-white truncate">
-                {activeSession?.title || (lang === 'ar' ? 'المرشد الزراعي الذكي' : 'AI Farm Advisor')}
-              </h2>
-              <span className="hidden sm:inline-block text-[10px] px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-mono font-bold shrink-0">
-                {areaFeddan} {lang === 'ar' ? 'فدان' : 'feddans'}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={toggleLang}
-              className="px-3 py-1.5 rounded-2xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 text-xs font-bold text-neutral-800 dark:text-neutral-200 active:scale-95 transition-all"
-            >
-              {lang === 'ar' ? 'English' : 'عربي'}
-            </button>
-          </div>
-        </header>
-
-        {/* Message Stream */}
-        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 space-y-4 max-w-4xl mx-auto w-full">
-          {activeSession?.messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`flex gap-3 animate-fadeIn ${
-                msg.sender === 'user' ? 'justify-end' : 'justify-start'
-              }`}
-            >
-              {msg.sender === 'assistant' && (
-                <div className="w-8 h-8 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-sm text-sm font-bold">
-                  🌱
-                </div>
-              )}
-
-              <div
-                className={`max-w-[85%] sm:max-w-[75%] p-4 rounded-3xl text-xs sm:text-sm leading-relaxed shadow-sm ${
-                  msg.sender === 'user'
-                    ? 'bg-blue-600 text-white rounded-br-none'
-                    : 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 rounded-bl-none border border-black/5 dark:border-white/5'
-                }`}
-              >
-                {msg.sender === 'user' ? (
-                  <p className="whitespace-pre-wrap font-medium">{msg.content}</p>
-                ) : (
-                  <MarkdownMessage content={msg.content || ''} />
-                )}
-                <span className="block text-[10px] mt-1.5 opacity-60 font-mono text-left" dir="ltr">
-                  {msg.timestamp}
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+              <div className="truncate">
+                <span className="text-xs font-bold text-neutral-900 dark:text-white block truncate">
+                  {activeSession?.title || (lang === 'ar' ? 'محادثة إرشادية' : 'Advisory Chat')}
                 </span>
               </div>
             </div>
-          ))}
+          </div>
 
-          {/* Clean 3-Dots Typing Indicator (No Extra Words) */}
-          {isChatLoading && (
-            <div className="flex gap-3 animate-fadeIn justify-start">
-              <div className="w-8 h-8 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-sm text-sm">
-                🌱
-              </div>
-              <div className="p-3.5 px-5 rounded-3xl bg-white dark:bg-neutral-900 border border-black/5 dark:border-white/5 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-blue-600 dark:bg-blue-400 animate-bounce" />
-                <span className="w-2 h-2 rounded-full bg-blue-600 dark:bg-blue-400 animate-bounce [animation-delay:0.2s]" />
-                <span className="w-2 h-2 rounded-full bg-blue-600 dark:bg-blue-400 animate-bounce [animation-delay:0.4s]" />
-              </div>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggleLang}
+              className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 active:scale-95 transition-all"
+            >
+              {lang === 'ar' ? 'English' : 'عربي'}
+            </button>
+            <Link
+              href="/"
+              className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-300 active:scale-95 transition-all flex items-center gap-1"
+            >
+              <span>✕</span>
+            </Link>
+          </div>
+        </header>
 
-          <div ref={chatEndRef} />
+        {/* Messages List Area (Scrolling ONLY here) */}
+        <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-3.5 scrollbar-thin">
+          <div className="max-w-2xl mx-auto space-y-3.5">
+            {activeSession?.messages.map((m) => (
+              <div
+                key={m.id}
+                className={`flex gap-2.5 ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                {m.sender === 'assistant' && (
+                  <div className="w-7 h-7 rounded-full bg-blue-600/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 text-xs font-black">
+                    🌿
+                  </div>
+                )}
+
+                <div
+                  className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-3.5 py-2.5 text-xs sm:text-[13px] leading-relaxed shadow-sm ${
+                    m.sender === 'user'
+                      ? 'bg-blue-600 text-white rounded-br-xs'
+                      : 'bg-white dark:bg-neutral-800/90 text-neutral-800 dark:text-neutral-100 border border-black/5 dark:border-white/5 rounded-bl-xs'
+                  }`}
+                >
+                  <MarkdownMessage content={m.content || ''} />
+                  <span
+                    className={`text-[9px] block text-right mt-1 opacity-60 ${
+                      m.sender === 'user' ? 'text-white/80' : 'text-neutral-400'
+                    }`}
+                  >
+                    {m.timestamp}
+                  </span>
+                </div>
+              </div>
+            ))}
+
+            {/* Clean 3-dots typing loader */}
+            {isChatLoading && (
+              <div className="flex gap-2.5 items-center justify-start">
+                <div className="w-7 h-7 rounded-full bg-blue-600/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 text-xs font-black">
+                  🌿
+                </div>
+                <div className="bg-white dark:bg-neutral-800/90 border border-black/5 dark:border-white/5 rounded-2xl px-4 py-3 shadow-sm flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+                </div>
+              </div>
+            )}
+
+            <div ref={chatEndRef} />
+          </div>
         </div>
 
-        {/* Quick Prompts Carousel & Fixed Bottom Input */}
-        <div className="p-3 sm:p-5 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md border-t border-black/5 dark:border-white/10 shrink-0">
-          <div className="max-w-4xl mx-auto w-full space-y-2.5">
-            {/* Quick Prompts Carousel */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-              {QUICK_PROMPTS.map((prompt, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => handleSendMessage(prompt)}
-                  className="px-3.5 py-1.5 rounded-full bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 text-xs font-bold whitespace-nowrap active:scale-95 transition-all shrink-0 border border-black/5 dark:border-white/5"
-                >
-                  {prompt}
-                </button>
-              ))}
-            </div>
-
-            {/* Input Bar */}
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSendMessage();
-              }}
-              className="flex items-center gap-2 bg-neutral-100 dark:bg-neutral-800/80 rounded-3xl p-1.5 pl-3 pr-2 border border-black/5 dark:border-white/5 focus-within:ring-2 focus-within:ring-blue-600 transition-all"
-            >
-              <input
-                type="text"
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                placeholder={
-                  lang === 'ar'
-                    ? 'اسأل المرشد الزراعي عن الري، المحاصيل، أو صحة التربة...'
-                    : 'Ask your AI Agronomist about irrigation, crops, or soil...'
-                }
-                className="flex-1 bg-transparent text-xs sm:text-sm font-medium text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none px-2"
-              />
-
+        {/* Quick Suggestion Chips */}
+        {activeSession?.messages.length <= 2 && (
+          <div className="px-3 sm:px-5 py-1.5 shrink-0 overflow-x-auto scrollbar-none flex gap-1.5 max-w-2xl mx-auto w-full">
+            {QUICK_PROMPTS.map((p, idx) => (
               <button
-                type="submit"
-                disabled={!inputText.trim() || isChatLoading}
-                className="w-10 h-10 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center disabled:opacity-40 active:scale-95 transition-all shadow-md shrink-0"
+                key={idx}
+                onClick={() => handleSendMessage(p)}
+                className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-white dark:bg-neutral-800/80 hover:bg-neutral-100 dark:hover:bg-neutral-700 border border-black/5 dark:border-white/5 text-neutral-600 dark:text-neutral-300 whitespace-nowrap active:scale-95 transition-all shrink-0"
               >
-                <SendIcon className="w-4 h-4 rtl:rotate-180" />
+                {p}
               </button>
-            </form>
+            ))}
           </div>
+        )}
+
+        {/* Fixed Bottom Input Bar (Sticky above bottom of screen) */}
+        <div className="p-2.5 sm:p-3.5 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md border-t border-black/5 dark:border-white/10 shrink-0">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSendMessage();
+            }}
+            className="max-w-2xl mx-auto flex items-center gap-2"
+          >
+            <input
+              type="text"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              placeholder={lang === 'ar' ? 'اسأل عن ري أرضك، الطقس، أو الدورة الزراعية...' : 'Ask about irrigation, weather, or crops...'}
+              disabled={isChatLoading}
+              className="flex-1 px-3.5 py-2.5 rounded-2xl bg-neutral-100 dark:bg-neutral-800 text-xs sm:text-sm font-medium text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-600 border border-black/5 dark:border-white/5"
+            />
+            <button
+              type="submit"
+              disabled={isChatLoading || !inputText.trim()}
+              className="p-2.5 rounded-2xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white shadow-md active:scale-95 transition-all shrink-0"
+            >
+              <SendIcon className="w-4 h-4 rtl:rotate-180" />
+            </button>
+          </form>
         </div>
       </main>
     </div>

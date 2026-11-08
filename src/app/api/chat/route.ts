@@ -12,7 +12,7 @@ const CANDIDATE_MODELS = [
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { message, lang = 'ar', context = {}, history = [] } = body;
+    const { message, lang = 'ar', context = {}, history = [], centralMemory = [] } = body;
 
     if (!message) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 });
@@ -39,10 +39,26 @@ export async function POST(request: Request) {
       ? context.agentMemory.join(' - ')
       : 'مزارع طموح يسعى لترشيد المياه وزيادة الإنتاجية';
 
+    const globalMemoryText = Array.isArray(centralMemory) && centralMemory.length > 0
+      ? centralMemory.map((m: string) => `- ${m}`).join('\n')
+      : '- لا توجد تفضيلات سابقة محفوظة حتى الآن.';
+
     // Arabic System Instruction for Autonomous Agricultural Agent
     const arabicInstruction = `
 أنت "المرشد الزراعي الذكي" (Autonomous Agricultural Agent) في BlinkFarms.
 أنت لست مجرد شات بوت عادي، بل وكيل إرشادي زراعي فائق الذكاء مرتبط مباشرة بذاكرة الأرض وأرصاد أقمار ناسا الصناعية ومحرك الدورات الزراعية.
+
+### الذاكرة المركزية الدائمة (Global Cross-Session Memory):
+هذه الحقائق والقواعد تم حفظها من محادثات سابقة للمزارع ويجب عليك تذكرها والالتزام بها دائماً عبر كل المحادثات:
+${globalMemoryText}
+
+قاعدة التعلم وتحديث الذاكرة المركزية:
+إذا طلب منك المستخدم مناداتك باسم معين (مثل: "هسميك رفاعي" أو "أنا اسمي أبو أحمد" أو "أرضي تروى بالغمر")، التزم فوراً بالاسم أو المعلومة في ردك وخاطبه بها، واكتب في نهاية ردك هذا الوسم:
+[MEMORY: المفتاح = القيمة]
+مثال:
+[MEMORY: اسم_المساعد = رفاعي]
+[MEMORY: اسم_المزارع = أبو أحمد]
+(إذا كانت المعلومة مخزنة بالفعل في قائمتك أعلاه فلا داعي لتكرار وسم MEMORY).
 
 القواعد الإلزامية:
 1. التحدث باللغة العربية البسيطة والمحترمة ("يا حاج"، "يا طيب"، "عين العقل"، "أرضك في عنينا").
@@ -69,6 +85,14 @@ export async function POST(request: Request) {
     const englishInstruction = `
 You are the BlinkFarms Autonomous Agricultural AI Agent.
 You are not a generic chat model; you are directly connected to real-time NASA Earth observations, 10-year field memory, and the FieldShift rotation optimizer.
+
+### Global Cross-Session Memory:
+${globalMemoryText}
+
+LEARNING RULE:
+If the user gives you a specific name (e.g. "I will call you Refaei") or shares a personal farm fact, adopt it immediately and output:
+[MEMORY: key = value]
+at the end of your response.
 
 MANDATORY RULES:
 1. Respond in clear, empathetic, fluent English.

@@ -125,7 +125,22 @@ export default function BlinkFarmsApp() {
       } catch {}
     }
 
-    setAppStep('dashboard');
+    // Check if the user has selected a project/farm before
+    const savedPresetId = localStorage.getItem('blinkfarms_selected_preset');
+    if (!savedPresetId) {
+      // Must open the Farm Setup Gateway modal immediately on first login!
+      setAppStep('farm_setup');
+    } else {
+      setSelectedPresetId(savedPresetId);
+      const matched = DEMO_FIELDS.find((p) => p.id === savedPresetId);
+      if (matched) {
+        setCurrentLat(matched.coordinates[0]);
+        setCurrentLon(matched.coordinates[1]);
+        setCurrentFieldName(savedLang === 'en' ? matched.nameEn : matched.nameAr);
+        setCurrentAreaFeddan(Math.round(matched.areaHa * 2.38));
+      }
+      setAppStep('dashboard');
+    }
   }, [router]);
 
   // Real-Time Dynamic Telemetry Calculation
@@ -177,9 +192,18 @@ export default function BlinkFarmsApp() {
     return DEMO_FIELDS.find(p => p.id === selectedPresetId);
   }, [selectedPresetId]);
 
+  const toggleLang = () => {
+    const nextLang = lang === 'ar' ? 'en' : 'ar';
+    setLang(nextLang);
+    localStorage.setItem('blinkfarms_lang', nextLang);
+    document.documentElement.lang = nextLang;
+    document.documentElement.dir = nextLang === 'ar' ? 'rtl' : 'ltr';
+  };
+
   // Handle Preset Selection
   const handleSelectPreset = (preset: FieldPreset) => {
     setSelectedPresetId(preset.id);
+    localStorage.setItem('blinkfarms_selected_preset', preset.id);
     setCurrentLat(preset.coordinates[0]);
     setCurrentLon(preset.coordinates[1]);
     setCurrentFieldName(lang === 'ar' ? preset.nameAr : preset.nameEn);
@@ -190,6 +214,7 @@ export default function BlinkFarmsApp() {
   // Handle Custom Farm Selection
   const handleSelectCustom = (lat: number, lon: number, name: string, areaFeddan: number) => {
     setSelectedPresetId('custom');
+    localStorage.setItem('blinkfarms_selected_preset', 'custom');
     setCurrentLat(lat);
     setCurrentLon(lon);
     setCurrentFieldName(name);
@@ -370,7 +395,7 @@ export default function BlinkFarmsApp() {
 
             {/* Language Switcher */}
             <button
-              onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}
+              onClick={toggleLang}
               className="px-3 py-1.5 rounded-2xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-xs font-bold shadow-sm active:scale-95 transition-all"
             >
               {lang === 'ar' ? 'English' : 'عربي'}
