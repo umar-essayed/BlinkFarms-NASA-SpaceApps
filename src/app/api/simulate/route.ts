@@ -46,8 +46,11 @@ export async function POST(request: Request) {
       // Microservice idle or starting; proceed to local TypeScript engine
     }
 
-    // High-performance local biophysical engine
-    const strategies = simulateRotationStrategies(memory, priorities, lat, lon);
+    const whatIfWaterCutPercent = typeof body.whatIfWaterCutPercent === 'number' ? body.whatIfWaterCutPercent : 0;
+    const whatIfHeatwaveC = typeof body.whatIfHeatwaveC === 'number' ? body.whatIfHeatwaveC : 0;
+
+    // High-performance local biophysical engine (FAO AquaCrop + DSSAT 6-Season Sequence)
+    const strategies = simulateRotationStrategies(memory, priorities, lat, lon, whatIfWaterCutPercent, whatIfHeatwaveC);
 
     return NextResponse.json({
       success: true,

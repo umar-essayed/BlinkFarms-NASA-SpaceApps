@@ -577,3 +577,64 @@ def solve_dynamic_topsis(
     denom[denom == 0] = 1.0
     c_i = d_minus / denom
     return c_i
+
+# ------------------------------------------------------------------------------
+# EQUATION 21: NASA POWER Growing Degree Days (GDD) & Phenology Suitability
+# ------------------------------------------------------------------------------
+def calc_daily_gdd(t_max: float, t_min: float, t_base: float, t_cutoff: float = 38.0) -> float:
+    """
+    Computes daily Growing Degree Days:
+    GDD_daily = max(0.0, (min(t_max, t_cutoff) + max(t_min, t_base)) / 2.0 - t_base)
+    Conforms to McMaster & Wilhelm (1997) Method 2.
+    """
+    t_max_adj = min(t_max, t_cutoff)
+    t_min_adj = max(t_min, t_base)
+    t_mean = (t_max_adj + t_min_adj) / 2.0
+    return float(max(0.0, t_mean - t_base))
+
+# ------------------------------------------------------------------------------
+# EQUATION 22: FAO AquaCrop Transpiration-to-Biomass Production Function
+# ------------------------------------------------------------------------------
+def calc_aquacrop_biomass(
+    wp_star: float,
+    sum_tr_et0: float,
+    f_temp: float = 1.0,
+    f_salinity: float = 1.0
+) -> float:
+    """
+    FAO AquaCrop law of biomass accumulation (Steduto et al., 2009; Raes et al., 2012):
+    B = (WP* / 100) * Sum(Tr_a / ET_o) * f_temp * f_salinity
+    Returns aboveground dry biomass in ton/ha.
+    WP* is normalized water productivity (g/m^2). 1 g/m^2 = 0.01 ton/ha.
+    """
+    biomass_ton_ha = (wp_star / 100.0) * sum_tr_et0 * f_temp * f_salinity
+    return float(max(0.1, biomass_ton_ha))
+
+# ------------------------------------------------------------------------------
+# EQUATION 23: AquaCrop Pollination Heat-Shock & Adjusted Harvest Index
+# ------------------------------------------------------------------------------
+def calc_harvest_index_heat_adjusted(
+    hi_base: float,
+    t_max_flowering: float,
+    t_crit_flowering: float,
+    k_sterility: float = 0.035,
+    f_water_stress_flowering: float = 1.0
+) -> Tuple[float, float, float]:
+    """
+    FAO AquaCrop Anthesis Heat Sterilization & Adjusted Harvest Index (HI_adj):
+    If T_max,flowering > T_crit,flowering:
+        f_heat = max(0.10, 1.0 - k_sterility * (T_max,flowering - T_crit,flowering)**2)
+    HI_adj = HI_base * f_water_stress_flowering * f_heat
+    Returns: (hi_adj, f_heat, yield_reduction_factor)
+    """
+    heat_excess = max(0.0, t_max_flowering - t_crit_flowering)
+    if heat_excess > 0:
+        f_heat = max(0.10, 1.0 - k_sterility * (heat_excess ** 2))
+    else:
+        f_heat = 1.0
+
+    f_water = max(0.20, min(1.0, f_water_stress_flowering))
+    hi_adj = float(hi_base * f_water * f_heat)
+    yield_reduction_factor = float(1.0 - (hi_adj / hi_base) if hi_base > 0 else 0.0)
+    return hi_adj, float(f_heat), yield_reduction_factor
+

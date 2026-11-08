@@ -18,32 +18,43 @@ export interface Crop {
   family: BotanicalFamily['familyKey'];
   familyNameAr: string;
   familyNameEn: string;
-  season: 'summer' | 'winter' | 'perennial';
+  season: 'summer' | 'winter' | 'perennial' | 'dual';
   
+  // FAO AquaCrop & Photosynthetic Pathway
+  c3_c4pathway: 'C3' | 'C4';
+  wpNormalizedGm2: number;       // Normalized Water Productivity WP* (g/m^2)
+  harvestIndexBase: number;      // Reference Harvest Index HI_0 [0.15 - 0.70]
+  tBaseC: number;                // Base temperature for GDD (°C)
+  tCritFloweringC: number;       // Critical anthesis temperature threshold (°C)
+  gddRequired: number;           // Total Growing Degree Days to physiological maturity
+  nFixationKgHa: number;         // Biological N fixation credit left for next crop (kg N/ha)
+  nDemandKgHa: number;           // Total required seasonal N fertilizer input (kg N/ha)
+  residueOrganicMatterScore: number; // Crop residue score (1 to 10)
+
   // FAO-56 Water & Biophysical Parameters
   kcIni: number;
   kcMid: number;
   kcEnd: number;
-  ky: number;              // Stewart yield response factor to water stress
-  depletionP: number;      // Fraction of TAW that can be depleted before stress
-  rootDepthMaxM: number;   // Max root zone depth Zr,max in meters
+  ky: number;                    // Stewart yield response factor to water stress
+  depletionP: number;            // Fraction of TAW that can be depleted before stress
+  rootDepthMaxM: number;         // Max root zone depth Zr,max in meters
   
   // EcoCrop & Climate Envelope
   tBase: number;
   tOpt: number;
   tMax: number;
-  gddMaturity: number;     // Growing degree days needed to mature
-  waterRequirementMm: number; // Seasonal water requirement (mm)
+  gddMaturity: number;           // Growing degree days needed to mature
+  waterRequirementMm: number;    // Seasonal water requirement (mm)
   
   // Soil & Resilience Characteristics
-  salinityToleranceDsM: number; // EC threshold (dS/m)
-  nitrogenFixationKgHa: number; // Biological N fixation (positive for legumes)
-  residueBiomassTonHa: number;  // Crop residue left on field
+  salinityToleranceDsM: number;  // EC threshold (dS/m)
+  nitrogenFixationKgHa: number;  // Biological N fixation (positive for legumes)
+  residueBiomassTonHa: number;   // Crop residue left on field
   waterloggingTolerance: 'low' | 'medium' | 'high';
   
   // Economic / Market Profile
-  avgCostPerHa: number;    // In USD
-  avgRevenuePerHa: number; // In USD
+  avgCostPerHa: number;          // In USD
+  avgRevenuePerHa: number;       // In USD
   marketLiquidity: 'high' | 'medium' | 'low';
 
   // Agro-Ecological Region Envelope
@@ -60,15 +71,40 @@ export interface FieldMemoryState {
   salinityRiskLevel: 'normal' | 'moderate' | 'severe';
 }
 
+export interface RotationSeason {
+  seasonIndex: 1 | 2 | 3 | 4 | 5 | 6; // 1-6 across the 3 years
+  seasonType: 'winter' | 'summer';
+  seasonNameAr: string;
+  seasonNameEn: string;
+  yearNumber: 1 | 2 | 3;
+  crop: Crop;
+  seasonalWaterNeedM3Ha: number;
+  waterSavedVsBaselinePercent: number;
+  soilNitrogenDeltaKgHa: number;
+  nitrogenCreditReceivedKgHa: number;
+  ureaBagsSavedPerFeddan: number;
+  yieldBiomassTonHa: number;
+  harvestIndexAdj: number;
+  yieldActualTonHa: number;
+  failureRiskPercent: number;
+  netIncomeUsdHa: number;
+  transitionReasonAr: string;
+  transitionReasonEn: string;
+}
+
 export interface RotationYear {
   year: 1 | 2 | 3;
-  crop: Crop;
+  crop: Crop; // Primary / winter crop (backwards-compatible)
+  winterCrop?: Crop;
+  summerCrop?: Crop;
+  seasons?: [RotationSeason, RotationSeason];
   seasonalWaterNeedM3Ha: number;
   waterSavedVsBaselinePercent: number;
   soilNitrogenDeltaKgHa: number;
   yieldRatioPredicted: number; // Ya / Ym (0.0 to 1.0)
   failureRiskPercent: number;  // P(Yield < 70%)
   netIncomeUsdHa: number;
+  ureaBagsSavedPerFeddan?: number;
 }
 
 export interface RotationStrategy {
@@ -80,15 +116,20 @@ export interface RotationStrategy {
   descriptionAr: string;
   descriptionEn: string;
   years: [RotationYear, RotationYear, RotationYear];
+  seasons: RotationSeason[]; // Full 6-season sequence (3 Years × 2 Seasons)
   
   // Aggregated 3-Year Metrics
   totalWaterUseM3Ha: number;
   totalWaterSavedPercent: number;
+  totalWaterSavedM3Feddan: number;
   totalNitrogenAddedKgHa: number;
+  totalUreaBagsSavedPerFeddan: number;
+  totalFertilizerSavingsEgp: number;
   avgFailureRiskPercent: number;
   totalNetProfitUsdHa: number;
   soilHealthIndexScore: number; // 0 - 100
   topsisCloseness: number;      // Ci in [0, 1]
+  biodrillingRemediated: boolean;
   
   // Explainability & NASA Considerations
   evidenceSummaryAr: string;

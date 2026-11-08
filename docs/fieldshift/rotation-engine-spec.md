@@ -146,3 +146,30 @@ FieldShift allows farmers and agronomists to perturb boundary conditions dynamic
 1. **Water Quota Cut (-10% to -30%)**: Re-evaluates all rotations under deficit irrigation; ultra-drought-hardy species (Sorghum, Panicum, Barley) surge in TOPSIS rank.
 2. **Prioritizing Immediate Profit vs Long-Term Soil Health**: Adjusts $\mathbf{w}$ dynamically, demonstrating the trade-off curve between immediate cash crop extraction and multi-year fertility preservation.
 3. **Subsoil Remediation Validation**: Demonstrates how bio-drilling taproots restore yield potential across subsequent winter wheat crops.
+
+---
+
+## 7. Next-Gen Biophysical Upgrade: FAO AquaCrop & DSSAT Sequence Analysis
+
+### 7.1 Equation 21: NASA POWER Thermal Time & Growing Degree Days ($GDD$)
+$$GDD_t = \max\left(0, \frac{T_{\max, t} + T_{\min, t}}{2} - T_{\text{base}}\right)$$
+Phenological progression and maturity require $\sum_{t=1}^{\text{duration}} GDD_t \ge GDD_{\text{req}}$.
+
+### 7.2 Equation 22: FAO AquaCrop Water Productivity Biomass Model
+AquaCrop partitions cumulative actual transpiration $T_a$ into total above-ground dry biomass $B$:
+$$B = WP^* \times \sum_{t=1}^{\text{duration}} \left( \frac{T_{a, t}}{ET_{0, t}} \right)$$
+Where $WP^*$ is the climate-normalized crop water productivity ($15 - 20\text{ g/m}^2$ for C3 crops, $30 - 35\text{ g/m}^2$ for C4 crops).
+
+### 7.3 Equation 23: Anthesis Heat-Shock & Harvest Index Sterilization
+Harvestable yield $Y = B \times HI_{\text{adj}}$, where actual harvest index is penalized if temperatures exceed crop-specific critical flowering thresholds ($T_{\text{crit,flowering}}$):
+$$f_{\text{heat}} = \max\left(0.15, 1.0 - 0.09 \cdot \sum \max(0, T_{\max} - T_{\text{crit}})\right)$$
+$$HI_{\text{adj}} = HI_0 \times f_{\text{heat}}$$
+
+### 7.4 DSSAT 6-Season (3-Year) Dynamic Soil State Carryover
+The rotation engine operates across 6 discrete Egyptian agro-climatic seasons (Winter $\to$ Summer $\to$ Winter $\to$ Summer $\to$ Winter $\to$ Summer):
+1. **Biological Nitrogen Credit**: A legume in season $t$ fixes $N_{\text{fix}}$, of which $75\%$ is biologically available as residual soil organic nitrate for the subsequent cereal crop:
+   $$N_{\text{credit}, t+1} = \min(85, 0.75 \times N_{\text{fix}, t})\text{ kg N/ha}$$
+   This translates directly to saved 50kg Urea bags for Egyptian farmers:
+   $$\text{Bags Saved} = \frac{N_{\text{credit}} \times 0.42}{0.46 \times 50} \approx \frac{N_{\text{credit}}}{54.76}\quad [\text{bags/feddan}]$$
+2. **Subsoil Hardpan Bio-Drilling**: Deep taproot crops ($Z_{r,\max} \ge 1.6\text{ m}$) reduce compaction score by 60%, unlocking soil water storage for subsequent shallow-rooted crops.
+3. **Soil Moisture & Salinity Carryover**: High water-demand crops deplete deep profile storage $\Phi_{\text{subsoil}}$, while salt-tolerant crops facilitate profile flushing.
