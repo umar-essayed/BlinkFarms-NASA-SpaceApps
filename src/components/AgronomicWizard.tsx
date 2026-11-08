@@ -19,23 +19,27 @@ interface AgronomicWizardProps {
   lang: Language;
   onComplete: (answers: WizardAnswers, updatedPriorities: UserPriorities, updatedMemory: Partial<FieldMemoryState>) => void;
   onCancel?: () => void;
+  initialAnswers?: WizardAnswers | null;
 }
 
 export default function AgronomicWizard({
   lang,
   onComplete,
   onCancel,
+  initialAnswers,
 }: AgronomicWizardProps) {
   const [currentStep, setCurrentStep] = useState(1);
 
-  // Form State
-  const [previousCrop, setPreviousCrop] = useState('berseem');
-  const [soilType, setSoilType] = useState('clay_loam');
-  const [irrigationType, setIrrigationType] = useState('drip');
-  const [subsoilIssue, setSubsoilIssue] = useState('none');
-  const [primaryPriority, setPrimaryPriority] = useState<'water' | 'profit' | 'soil' | 'resilience'>('water');
-  const [areaFeddan, setAreaFeddan] = useState(15);
-  const [marketTarget, setMarketTarget] = useState<'local' | 'export'>('local');
+  // Form State initialized with initialAnswers if present
+  const [previousCrop, setPreviousCrop] = useState(initialAnswers?.previousCrop || 'berseem');
+  const [soilType, setSoilType] = useState(initialAnswers?.soilType || 'clay_loam');
+  const [irrigationType, setIrrigationType] = useState(initialAnswers?.irrigationType || 'drip');
+  const [subsoilIssue, setSubsoilIssue] = useState(initialAnswers?.subsoilIssue || 'none');
+  const [primaryPriority, setPrimaryPriority] = useState<'water' | 'profit' | 'soil' | 'resilience'>(
+    initialAnswers?.primaryPriority || 'water'
+  );
+  const [areaFeddan, setAreaFeddan] = useState(initialAnswers?.areaFeddan || 15);
+  const [marketTarget, setMarketTarget] = useState<'local' | 'export'>(initialAnswers?.marketTarget || 'local');
 
   const TOTAL_STEPS = 5;
 

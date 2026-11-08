@@ -91,20 +91,11 @@ export default function AuthGateway({ lang, onLoginSuccess, onSkip }: AuthGatewa
           </p>
         </div>
 
-        {/* 1-Click Fast Judge Demo Button (Highlighted for NASA Evaluators) */}
-        <button
-          onClick={handleFastDemoLogin}
-          className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs sm:text-sm font-bold shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95"
-        >
-          <span>⚡</span>
-          <span>{lang === 'ar' ? 'دخول سريع للتحكيم (NASA Space Apps Demo)' : 'Instant Demo Login (Space Apps Evaluator)'}</span>
-        </button>
-
         {/* Google OAuth Button */}
         <button
           onClick={handleGoogleLogin}
           disabled={isLoading}
-          className="w-full py-2.5 px-4 rounded-2xl bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 border border-black/5 dark:border-white/10 text-neutral-800 dark:text-neutral-200 text-xs font-bold flex items-center justify-center gap-2 transition-all active:scale-95"
+          className="w-full py-3 px-4 rounded-2xl bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 border border-black/5 dark:border-white/10 text-neutral-800 dark:text-neutral-200 text-xs font-bold flex items-center justify-center gap-2 transition-all active:scale-95"
         >
           <svg className="w-4 h-4" viewBox="0 0 24 24">
             <path

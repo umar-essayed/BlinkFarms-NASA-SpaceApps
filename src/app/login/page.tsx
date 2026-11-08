@@ -1,9 +1,16 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import Script from 'next/script';
 import { useRouter } from 'next/navigation';
 import { Language } from '@/lib/types';
 import { UserProfile } from '@/components/AuthGateway';
+
+declare global {
+  interface Window {
+    google?: any;
+  }
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -13,17 +20,113 @@ export default function LoginPage() {
   const [name, setName] = useState('');
   const [isRegisterMode, setIsRegisterMode] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const googleBtnContainerRef = useRef<HTMLDivElement>(null);
+
+  const GOOGLE_CLIENT_ID =
+    process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
+    '986833049857-mfsmjulip5kdbl4bavc645j416unb12a.apps.googleusercontent.com';
 
   useEffect(() => {
     const savedLang = localStorage.getItem('blinkfarms_lang') as Language;
     if (savedLang) setLang(savedLang);
-    
+
     // Check if already logged in
     const savedUser = localStorage.getItem('blinkfarms_auth_user');
     if (savedUser) {
       router.replace('/');
     }
   }, [router]);
+
+  // Decode Google JWT Credential Response
+  const decodeJwtPayload = (token: string) => {
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+      return JSON.parse(jsonPayload);
+    } catch (err) {
+      console.error('Failed to parse Google JWT', err);
+      return null;
+    }
+  };
+
+  // Google Sign-In Handler
+  const handleGoogleCredentialResponse = async (response: any) => {
+    if (!response || !response.credential) {
+      setAuthError(lang === 'ar' ? 'فشل تسجيل الدخول عبر Google' : 'Google sign-in failed');
+      return;
+    }
+
+    setIsLoading(true);
+    setAuthError(null);
+
+    const payload = decodeJwtPayload(response.credential);
+    if (!payload || !payload.email) {
+      setIsLoading(false);
+      setAuthError(lang === 'ar' ? 'تعذر قراءة بيانات حساب Google' : 'Could not decode Google user profile');
+      return;
+    }
+
+    const realUser: UserProfile = {
+      id: `google_${payload.sub}`,
+      name: payload.name || payload.email.split('@')[0],
+      email: payload.email,
+      avatar: payload.picture,
+      role: 'farmer',
+    };
+
+    // Sync with backend API
+    try {
+      await fetch('/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          credential: response.credential,
+          user: realUser,
+        }),
+      });
+    } catch (e) {
+      // Non-blocking sync
+    }
+
+    handleSuccessfulAuth(realUser);
+  };
+
+  // Initialize Google Identity Services
+  const initGoogleIdentity = () => {
+    if (typeof window !== 'undefined' && window.google?.accounts?.id) {
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleGoogleCredentialResponse,
+        auto_select: false,
+        cancel_on_tap_outside: true,
+      });
+
+      if (googleBtnContainerRef.current) {
+        googleBtnContainerRef.current.innerHTML = '';
+        window.google.accounts.id.renderButton(googleBtnContainerRef.current, {
+          type: 'standard',
+          theme: 'outline',
+          size: 'large',
+          text: 'continue_with',
+          shape: 'pill',
+          logo_alignment: 'left',
+          width: '340',
+          locale: lang === 'ar' ? 'ar' : 'en',
+        });
+      }
+    }
+  };
+
+  useEffect(() => {
+    initGoogleIdentity();
+  }, [lang]);
 
   const toggleLang = () => {
     const nextLang = lang === 'ar' ? 'en' : 'ar';
@@ -35,35 +138,8 @@ export default function LoginPage() {
 
   const handleSuccessfulAuth = (user: UserProfile) => {
     localStorage.setItem('blinkfarms_auth_user', JSON.stringify(user));
+    setIsLoading(false);
     router.push('/');
-  };
-
-  const handleDemoLogin = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      const user: UserProfile = {
-        id: 'u_demo',
-        name: lang === 'ar' ? 'م. محمود الشربيني' : 'M. Sherbini',
-        email: 'farmer@blinkfarms.eg',
-        role: 'farmer',
-      };
-      handleSuccessfulAuth(user);
-    }, 400);
-  };
-
-  const handleGoogleLogin = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      const user: UserProfile = {
-        id: 'u_google',
-        name: lang === 'ar' ? 'مزارع تجريبي (Google)' : 'Verified Farmer (Google)',
-        email: 'farmer.demo@gmail.com',
-        role: 'farmer',
-      };
-      handleSuccessfulAuth(user);
-    }, 600);
   };
 
   const handleEmailAuth = (e: React.FormEvent) => {
@@ -80,11 +156,21 @@ export default function LoginPage() {
         role: 'farmer',
       };
       handleSuccessfulAuth(user);
-    }, 500);
+    }, 400);
   };
 
   return (
-    <main className="min-h-screen w-full bg-[#F5F5F7] dark:bg-black flex flex-col justify-between p-4 sm:p-6 animate-fadeIn">
+    <main
+      dir={lang === 'ar' ? 'rtl' : 'ltr'}
+      className="min-h-screen w-full bg-[#F5F5F7] dark:bg-black flex flex-col justify-between p-4 sm:p-6 animate-fadeIn font-sans"
+    >
+      {/* Official Google Identity Services Script */}
+      <Script
+        src="https://accounts.google.com/gsi/client"
+        strategy="afterInteractive"
+        onLoad={initGoogleIdentity}
+      />
+
       {/* Top Bar with Language Toggle */}
       <div className="w-full max-w-md mx-auto flex justify-end">
         <button
@@ -109,47 +195,29 @@ export default function LoginPage() {
           </h1>
           <p className="text-xs text-neutral-500 dark:text-neutral-400">
             {lang === 'ar'
-              ? 'سجّل دخولك لحفظ بيانات أرضك وتاريخ ذاكرة الحقل'
+              ? 'سجّل دخولك لحفظ بيانات أرضك وتاريخ ذاكرة الحقل بأمان'
               : 'Log in to securely link your field memory and crop records'}
           </p>
         </div>
 
-        {/* Quick Demo Access Button (Clean Farmer Demo) */}
-        <button
-          onClick={handleDemoLogin}
-          disabled={isLoading}
-          className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs sm:text-sm font-bold shadow-md flex items-center justify-center gap-2 transition-all active:scale-95"
-        >
-          <span>🌱</span>
-          <span>{lang === 'ar' ? 'دخول سريع بحساب مزارع تجريبي' : 'Quick Demo Farmer Access'}</span>
-        </button>
+        {authError && (
+          <div className="p-3 rounded-2xl bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-300 text-xs font-bold text-center">
+            {authError}
+          </div>
+        )}
 
-        {/* Google OAuth Button */}
-        <button
-          onClick={handleGoogleLogin}
-          disabled={isLoading}
-          className="w-full py-2.5 px-4 rounded-2xl bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 text-xs font-bold flex items-center justify-center gap-2 transition-all active:scale-95"
-        >
-          <svg className="w-4 h-4" viewBox="0 0 24 24">
-            <path
-              fill="#4285F4"
-              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-            />
-            <path
-              fill="#34A853"
-              d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-            />
-            <path
-              fill="#FBBC05"
-              d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-            />
-            <path
-              fill="#EA4335"
-              d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-            />
-          </svg>
-          <span>{lang === 'ar' ? 'المتابعة عبر حساب Google' : 'Continue with Google'}</span>
-        </button>
+        {/* Real Google OAuth Button Container */}
+        <div className="space-y-3">
+          <div className="flex justify-center w-full min-h-[44px]">
+            <div ref={googleBtnContainerRef} id="googleSignInContainer" className="flex justify-center" />
+          </div>
+
+          <p className="text-[11px] text-center text-neutral-400">
+            {lang === 'ar'
+              ? 'تسجيل دخول موثق وآمن عبر حساب Google الرسمي'
+              : 'Verified & secure login via official Google OAuth'}
+          </p>
+        </div>
 
         {/* Divider */}
         <div className="flex items-center gap-3">
@@ -213,7 +281,7 @@ export default function LoginPage() {
             {isLoading
               ? (lang === 'ar' ? 'جارٍ التحقق...' : 'Verifying...')
               : isRegisterMode
-              ? (lang === 'ar' ? 'إنشاء حساب جديد' : 'Create Account')
+              ? (lang === 'ar' ? 'إنشاء حساب مزارع جديد' : 'Create Farmer Account')
               : (lang === 'ar' ? 'تسجيل الدخول' : 'Sign In')}
           </button>
         </form>

@@ -13,6 +13,8 @@ interface SplitFieldMapProps {
   canopyTempAnomaly?: number;
   isShockActive?: boolean;
   isSimulatingTelemetry?: boolean;
+  polygonBoundary?: [number, number][];
+  onCustomPolygonChange?: (coords: [number, number][], areaFeddan: number) => void;
 }
 
 export default function SplitFieldMap({
@@ -22,11 +24,15 @@ export default function SplitFieldMap({
   lang,
   onLocationChange,
   isShockActive = false,
+  polygonBoundary,
+  onCustomPolygonChange,
 }: SplitFieldMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
   const [isLocating, setIsLocating] = useState<boolean>(false);
+  const [isTracingMode, setIsTracingMode] = useState<boolean>(false);
+  const [tracedPoints, setTracedPoints] = useState<[number, number][]>([]);
 
   // Initialize Leaflet Map
   useEffect(() => {
@@ -120,12 +126,34 @@ export default function SplitFieldMap({
       }
       drawParcelPolygons(L.default || L, map, lat, lon);
     });
-  }, [lat, lon, isShockActive]);
+  }, [lat, lon, isShockActive, polygonBoundary]);
 
   // Draw Field Boundary
   const drawParcelPolygons = (L: any, map: any, cLat: number, cLon: number) => {
     if (map.rawPoly) map.removeLayer(map.rawPoly);
     if (map.bufferPoly) map.removeLayer(map.bufferPoly);
+
+    if (polygonBoundary && polygonBoundary.length >= 3) {
+      map.rawPoly = L.polygon(polygonBoundary, {
+        color: '#0071E3',
+        weight: 1.5,
+        dashArray: '5, 5',
+        fillOpacity: 0.05,
+        fillColor: '#0071E3',
+      }).addTo(map);
+
+      map.bufferPoly = L.polygon(polygonBoundary, {
+        color: isShockActive ? '#EF4444' : '#10B981',
+        weight: 3.0,
+        fillOpacity: isShockActive ? 0.35 : 0.22,
+        fillColor: isShockActive ? '#EF4444' : '#10B981',
+      }).addTo(map);
+
+      try {
+        map.fitBounds(map.bufferPoly.getBounds(), { padding: [35, 35], maxZoom: 16 });
+      } catch {}
+      return;
+    }
 
     const deltaRaw = 0.0036;
     const deltaBuffer = 0.0026;

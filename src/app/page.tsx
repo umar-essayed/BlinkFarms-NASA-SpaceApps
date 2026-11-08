@@ -22,6 +22,7 @@ import ProfileModal from '@/components/ProfileModal';
 import { UserProfile } from '@/components/AuthGateway';
 import NasaWeatherCard from '@/components/NasaWeatherCard';
 import ProvenanceBadge from '@/components/ProvenanceBadge';
+import DroughtThreatGauge from '@/components/DroughtThreatGauge';
 import {
   LightningIcon,
   RefreshIcon,
@@ -90,6 +91,40 @@ export default function BlinkFarmsApp() {
     } catch {
       // ignore parse error
     }
+
+    // Restore Agronomic Wizard persistence
+    const savedWizard = localStorage.getItem('blinkfarms_wizard_answers');
+    const savedCompleted = localStorage.getItem('blinkfarms_wizard_completed');
+    const savedOverrides = localStorage.getItem('blinkfarms_field_memory_overrides');
+    const savedPriorities = localStorage.getItem('blinkfarms_priorities');
+    const savedArea = localStorage.getItem('blinkfarms_area_feddan');
+
+    if (savedCompleted === 'true' && savedWizard) {
+      try {
+        const parsed = JSON.parse(savedWizard);
+        setWizardAnswers(parsed);
+        setIsWizardCompleted(true);
+        if (parsed.areaFeddan) setCurrentAreaFeddan(parsed.areaFeddan);
+      } catch (e) {
+        console.error('Failed to parse wizard answers', e);
+      }
+    }
+    if (savedOverrides) {
+      try {
+        setCustomMemoryOverrides(JSON.parse(savedOverrides));
+      } catch {}
+    }
+    if (savedPriorities) {
+      try {
+        setPriorities(JSON.parse(savedPriorities));
+      } catch {}
+    }
+    if (savedArea) {
+      try {
+        setCurrentAreaFeddan(Number(savedArea));
+      } catch {}
+    }
+
     setAppStep('dashboard');
   }, [router]);
 
@@ -137,6 +172,10 @@ export default function BlinkFarmsApp() {
   }, [strategies, selectedStrategyId]);
 
   const bestStrategy = activeStrategy;
+
+  const activePreset = useMemo(() => {
+    return DEMO_FIELDS.find(p => p.id === selectedPresetId);
+  }, [selectedPresetId]);
 
   // Handle Preset Selection
   const handleSelectPreset = (preset: FieldPreset) => {
@@ -189,6 +228,12 @@ export default function BlinkFarmsApp() {
     setCustomMemoryOverrides(updatedMemory);
     setCurrentAreaFeddan(answers.areaFeddan);
     setIsWizardCompleted(true);
+
+    localStorage.setItem('blinkfarms_wizard_answers', JSON.stringify(answers));
+    localStorage.setItem('blinkfarms_wizard_completed', 'true');
+    localStorage.setItem('blinkfarms_field_memory_overrides', JSON.stringify(updatedMemory));
+    localStorage.setItem('blinkfarms_priorities', JSON.stringify(updatedPriorities));
+    localStorage.setItem('blinkfarms_area_feddan', String(answers.areaFeddan));
   };
 
   return (
@@ -350,6 +395,7 @@ export default function BlinkFarmsApp() {
                 lang={lang}
                 onLocationChange={handleLocationChange}
                 isShockActive={telemetry.isFlashDroughtAlert}
+                polygonBoundary={activePreset?.polygonBoundary}
               />
             </div>
 
@@ -514,99 +560,8 @@ export default function BlinkFarmsApp() {
               </div>
             </div>
 
-            {/* 3. FARMER-FRIENDLY 14-DAY VISUAL TIMELINE CARD */}
-            <div className="p-5 sm:p-6 rounded-3xl bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md shadow-sm space-y-4">
-              <div>
-                <h3 className="text-sm sm:text-base font-bold text-neutral-900 dark:text-white">
-                  {lang === 'ar'
-                    ? 'المسار الزمني لموجة العطش (لماذا يسبق الرادار أعيننا بـ 14 يوماً؟)'
-                    : '14-Day Moisture Deficit Timeline (Why Early Detection Matters)'}
-                </h3>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-                  {lang === 'ar'
-                    ? 'الفرق بين ما تكشفه حرارة مسام الأوراق اليوم وما يظهر بالعين المجردة لاحقاً'
-                    : 'How early thermal signals prevent sudden irreversible browning 14 days later'}
-                </p>
-              </div>
-
-              {/* 3 Stages Horizontal/Stacked Progression */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                {/* Stage 1: Today */}
-                <div className="p-4 rounded-2xl bg-blue-50/70 dark:bg-blue-950/30 flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-bold text-blue-600 dark:text-blue-400">
-                        {lang === 'ar' ? 'المرحلة 1: اليوم' : 'Stage 1: Day 0'}
-                      </span>
-                      <span className="text-base">💧</span>
-                    </div>
-                    <h4 className="text-xs sm:text-sm font-bold text-neutral-900 dark:text-white">
-                      {lang === 'ar'
-                        ? 'الحقل سليم في الظاهر لكن عروقه عطشانة'
-                        : 'Field looks green, but roots are thirsty'}
-                    </h4>
-                    <p className="text-xs text-neutral-600 dark:text-neutral-300 mt-2 leading-relaxed">
-                      {lang === 'ar'
-                        ? 'المسام تقفل لحبس الميه فترتفع حرارة الورقة فوراً، بينما اللون أخضر تماماً أمام العين.'
-                        : 'Leaf pores shut to retain water, heating the canopy while the foliage still appears green.'}
-                    </p>
-                  </div>
-                  <span className="mt-3 text-[11px] font-bold text-blue-700 dark:text-blue-300">
-                    {lang === 'ar' ? '✅ فرصة الإنقاذ 100%' : '✅ 100% Save Window'}
-                  </span>
-                </div>
-
-                {/* Stage 2: After 7 Days */}
-                <div className="p-4 rounded-2xl bg-amber-50/70 dark:bg-amber-950/30 flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-bold text-amber-600 dark:text-amber-400">
-                        {lang === 'ar' ? 'المرحلة 2: بعد 7 أيام' : 'Stage 2: In 7 Days'}
-                      </span>
-                      <span className="text-base">🌡️</span>
-                    </div>
-                    <h4 className="text-xs sm:text-sm font-bold text-neutral-900 dark:text-white">
-                      {lang === 'ar'
-                        ? 'انقطاع التبريد الذاتي وضعف الأوعية'
-                        : 'Self-cooling failure & vascular strain'}
-                    </h4>
-                    <p className="text-xs text-neutral-600 dark:text-neutral-300 mt-2 leading-relaxed">
-                      {lang === 'ar'
-                        ? 'يبدأ تلف الأوعية الداخلية ويتعطل تدفق الغذاء، مع استمرار الخضار البصري الخادع.'
-                        : 'Internal moisture conduits cavitate; nutrients halt while the visual appearance remains green.'}
-                    </p>
-                  </div>
-                  <span className="mt-3 text-[11px] font-bold text-amber-700 dark:text-amber-300">
-                    {lang === 'ar' ? '⚠️ إجهاد متقدم' : '⚠️ Advanced Stress'}
-                  </span>
-                </div>
-
-                {/* Stage 3: After 14 Days */}
-                <div className="p-4 rounded-2xl bg-red-50/70 dark:bg-red-950/30 flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-bold text-red-600 dark:text-red-400">
-                        {lang === 'ar' ? 'المرحلة 3: بعد 14 يوماً' : 'Stage 3: In 14 Days'}
-                      </span>
-                      <span className="text-base">🍂</span>
-                    </div>
-                    <h4 className="text-xs sm:text-sm font-bold text-neutral-900 dark:text-white">
-                      {lang === 'ar'
-                        ? 'اصفرار الأوراق وجفاف المحصول'
-                        : 'Visible browning & crop loss'}
-                    </h4>
-                    <p className="text-xs text-neutral-600 dark:text-neutral-300 mt-2 leading-relaxed">
-                      {lang === 'ar'
-                        ? 'يصفر المحصول فجأة ويذبل بالعين المجردة، ويكون العلاج متأخراً بعد فقدان المحصول.'
-                        : 'Leaves abruptly turn yellow and brittle; by now yield loss is already locked in.'}
-                    </p>
-                  </div>
-                  <span className="mt-3 text-[11px] font-bold text-red-700 dark:text-red-300">
-                    {lang === 'ar' ? '🔴 فوات الأوان وتلف الزرع' : '🔴 Permanent Damage'}
-                  </span>
-                </div>
-              </div>
-            </div>
+            {/* 3. REAL-TIME DROUGHT THREAT GAUGE & STRESS VELOCITY */}
+            <DroughtThreatGauge telemetry={telemetry} lang={lang} />
           </div>
         )}
 
@@ -620,6 +575,7 @@ export default function BlinkFarmsApp() {
               <AgronomicWizard
                 lang={lang}
                 onComplete={handleWizardComplete}
+                initialAnswers={wizardAnswers}
               />
             ) : (
               <div className="space-y-6">
@@ -635,7 +591,10 @@ export default function BlinkFarmsApp() {
                   </div>
 
                   <button
-                    onClick={() => setIsWizardCompleted(false)}
+                    onClick={() => {
+                      setIsWizardCompleted(false);
+                      localStorage.setItem('blinkfarms_wizard_completed', 'false');
+                    }}
                     className="text-xs font-bold px-3 py-1.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 text-blue-600 dark:text-blue-400 active:scale-95 transition-all shrink-0"
                   >
                     {lang === 'ar' ? 'إعادة التحديد 🔄' : 'Recalibrate 🔄'}

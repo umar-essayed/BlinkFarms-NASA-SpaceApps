@@ -105,9 +105,16 @@ export default function FarmSetupGateway({
                   className="p-3.5 rounded-2xl border border-black/5 dark:border-white/10 hover:border-blue-500 bg-neutral-50 dark:bg-neutral-800/40 hover:bg-blue-50/50 dark:hover:bg-blue-950/30 text-start transition-all active:scale-95 flex items-center justify-between gap-2"
                 >
                   <div className="min-w-0">
-                    <span className="text-xs sm:text-sm font-bold text-neutral-900 dark:text-white truncate block">
-                      {lang === 'ar' ? preset.nameAr : preset.nameEn}
-                    </span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-xs sm:text-sm font-bold text-neutral-900 dark:text-white truncate block">
+                        {lang === 'ar' ? preset.nameAr : preset.nameEn}
+                      </span>
+                      {preset.polygonBoundary && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-mono font-bold">
+                          {lang === 'ar' ? 'حدود GeoJSON رسمية 🗺️' : 'Official Polygon 🗺️'}
+                        </span>
+                      )}
+                    </div>
                     <span className="text-[11px] text-neutral-400 truncate block mt-0.5">
                       {lang === 'ar' ? preset.locationAr : preset.locationEn}
                     </span>
