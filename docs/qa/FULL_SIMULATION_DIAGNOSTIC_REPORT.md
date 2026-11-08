@@ -1,5 +1,5 @@
 # BLINKFARMS END-TO-END SYSTEM DIAGNOSTIC & SIMULATION AUDIT REPORT
-**Execution Timestamp:** 2026-11-08T20:55:54.847Z
+**Execution Timestamp:** 2026-11-08T21:52:42.274Z
 **Environment:** Production Node vv24.20.0 / Next.js 14.2 / FastAPI Python 3.12 / NASA POWER GMAO MERRA-2
 **Audit Scope:** 5 Full Diagnostic Suites + Brutal Engineering Bottleneck Self-Critique
 
@@ -10,10 +10,10 @@ Testing 4 distinct agro-climatic coordinates across Egypt to verify live satelli
 
 | Location | Coordinates | NASA POWER Ingestion (Tmax/Tmin/RH/Wind/Precip) | Provenance State | Latency | Derived F_state (Carryover, Salinity, Hardpan) | Flash Drought (ΔESI_7d, ΔTc) |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Old Nile Delta (Kafr El-Sheikh)** | `31.11, 30.94` | Tmax=28.9°C, Tmin=18.7°C, RH=63%, Rad=176 W/m², Wind=2.0 m/s, Rain=0.4 mm | `LIVE` (NASA POWER Agroclimatology) | `1212 ms` | Φ=0.65, Salinity=`normal`, Hardpan=`false` | Alert=`false`, ΔESI_7d=`0.058`, ΔTc=`+-2.0°C` |
-| **Toshka / South Valley (Hyper-Arid Desert)** | `22.78, 31.5` | Tmax=35.5°C, Tmin=22.5°C, RH=26%, Rad=237 W/m², Wind=3.6 m/s, Rain=0.0 mm | `LIVE` (NASA POWER Agroclimatology) | `1081 ms` | Φ=0.38, Salinity=`moderate`, Hardpan=`true` | Alert=`false`, ΔESI_7d=`0.032`, ΔTc=`+-1.7°C` |
-| **El-Moghra / Western Desert (Saline Oasis)** | `30.25, 28.95` | Tmax=25.6°C, Tmin=18.0°C, RH=63%, Rad=189 W/m², Wind=2.4 m/s, Rain=0.1 mm | `LIVE` (NASA POWER Agroclimatology) | `542 ms` | Φ=0.45, Salinity=`severe`, Hardpan=`true` | Alert=`false`, ΔESI_7d=`0.058`, ΔTc=`+-2.0°C` |
-| **Borg El-Arab / Coastal North** | `30.88, 29.58` | Tmax=23.9°C, Tmin=20.7°C, RH=68%, Rad=192 W/m², Wind=3.5 m/s, Rain=1.1 mm | `LIVE` (NASA POWER Agroclimatology) | `1244 ms` | Φ=0.45, Salinity=`moderate`, Hardpan=`false` | Alert=`false`, ΔESI_7d=`0.057`, ΔTc=`+-2.0°C` |
+| **Old Nile Delta (Kafr El-Sheikh)** | `31.11, 30.94` | Tmax=28.9°C, Tmin=18.7°C, RH=63%, Rad=176 W/m², Wind=2.0 m/s, Rain=0.4 mm | `LIVE` (NASA POWER Agroclimatology) | `1542 ms` | Φ=0.65, Salinity=`normal`, Hardpan=`false` | Alert=`false`, ΔESI_7d=`0.058`, ΔTc=`+-2.0°C` |
+| **Toshka / South Valley (Hyper-Arid Desert)** | `22.78, 31.5` | Tmax=35.5°C, Tmin=22.5°C, RH=26%, Rad=237 W/m², Wind=3.6 m/s, Rain=0.0 mm | `LIVE` (NASA POWER Agroclimatology) | `1028 ms` | Φ=0.38, Salinity=`moderate`, Hardpan=`true` | Alert=`false`, ΔESI_7d=`0.032`, ΔTc=`+-1.7°C` |
+| **El-Moghra / Western Desert (Saline Oasis)** | `30.25, 28.95` | Tmax=25.6°C, Tmin=18.0°C, RH=63%, Rad=189 W/m², Wind=2.4 m/s, Rain=0.1 mm | `LIVE` (NASA POWER Agroclimatology) | `1391 ms` | Φ=0.45, Salinity=`severe`, Hardpan=`true` | Alert=`false`, ΔESI_7d=`0.058`, ΔTc=`+-2.0°C` |
+| **Borg El-Arab / Coastal North** | `30.88, 29.58` | Tmax=23.9°C, Tmin=20.7°C, RH=68%, Rad=192 W/m², Wind=3.5 m/s, Rain=1.1 mm | `LIVE` (NASA POWER Agroclimatology) | `890 ms` | Φ=0.45, Salinity=`moderate`, Hardpan=`false` | Alert=`false`, ΔESI_7d=`0.057`, ΔTc=`+-2.0°C` |
 
 ---
 
@@ -271,7 +271,7 @@ Testing the live autonomous agricultural agent (`/api/chat`) under **Toshka High
 **Testing Intent:** *Diagnosis of Hardpan infiltration block + Salinity tolerance recommendations.*
 
 - **Model Responder:** `farmer-friendly-core`
-- **Response Latency:** `1502 ms`
+- **Response Latency:** `2188 ms`
 - **Verbatim Agent Reply:**
 
 > يا حاج، متقلقش خالص، أرضك ودورتك معمول حسابها بالمللي لمواجهة الحرارة وشح المياه!
@@ -285,7 +285,7 @@ Testing the live autonomous agricultural agent (`/api/chat`) under **Toshka High
 **Testing Intent:** *Explanation of DSSAT nitrogen credit carryover and concrete Urea bag savings in Feddans.*
 
 - **Model Responder:** `farmer-friendly-core`
-- **Response Latency:** `903 ms`
+- **Response Latency:** `2020 ms`
 - **Verbatim Agent Reply:**
 
 > أهلاً بك يا طيب في أرضك المباركة!
@@ -298,22 +298,22 @@ Testing the live autonomous agricultural agent (`/api/chat`) under **Toshka High
 > *" طب لو الميه قلت عندي السنه الجاية والجو ولع حر زيادة 3 درجات، المحصول هيموت ولا أعمل إيه؟ "*
 **Testing Intent:** *AquaCrop heat-shock resilience and what-if drought stress mitigation.*
 
-- **Model Responder:** `farmer-friendly-core`
-- **Response Latency:** `1245 ms`
+- **Model Responder:** `gemini-2.5-flash`
+- **Response Latency:** `1957 ms`
 - **Verbatim Agent Reply:**
 
-> يا حاج، متقلقش خالص، أرضك ودورتك معمول حسابها بالمللي لمواجهة الحرارة وشح المياه!
-> الدورة التكيفية المعتمدة لحقلك (عروة شتوية (سنة 1): البرسيم الحجازي (معمر عميق الجذور) ➔ عروة صيفية (سنة 1): الدخن اللؤلؤي (شديد الجفاف والحرارة) ➔ عروة شتوية (سنة 2): القرطم (العصفر عميق الجذور) ➔ عروة صيفية (سنة 2): علف البانيكم المعمر (فائق الصمود للحرارة والملوحة) ➔ عروة شتوية (سنة 3): بنجر السكر ➔ عروة صيفية (سنة 3): اللوبيا (شديدة التحمل للحرارة)) بتعتمد بشكل أساسي على محاصيل مسار C4 المتفوقة في كفاءة استهلاك المياه مع جذور وتدية متعمقة:
-> 1. **الصمود أمام موجات الحر:** هذه المحاصيل بتتحمل درجات حرارة فوق 40°م في ذروة الصيف دون أن يحدث عقم زهري أو انهيار للمحصول.
-> 2. **توفير المياه:** الدورة بتوفر حوالي **16% من مياه الري**، وده معناه إن لو حصة المياه قلت في أي وقت، مخزون التربة والاحتياج القليل للمحصول هيحميك تماماً من الخسارة.
-> 3. **نصيحة ري عملية:** خلال موجات الحر الشديدة، يفضل تشغيل البيفوت بعد غروب الشمس أو في الصباح الباكر بمعدل **189 متر مكعب لكل فدان** (45 ملم) لتقليل الفاقد بالتبخر.
+> يا حاج، عين العقل سؤالك ده في صميم شغلنا. أرضك في توشكى (120 فدان) بتروى بالبيفوت، وده بيخلينا نتحكم في المية كويس.
+> 
+> بالنسبة للخطة اللي حاطينها لك، إحنا مختارين محاصيل زي البرسيم الحجازي والدخن اللؤلؤي والقرطم والبانيكم واللوبيا. المحاصيل دي كلها يا طيب بتستحمل الجفاف والحرارة العالية والملوحة، ومصممة بالذات عشان ظروف أرضك دي.
+> 
+> يعني لو المية قلت شوية والحر زاد 3 درجات، المحاصيل دي بإذن الله هتصمد وهتكمل معاك، لأنها عندها جذور عميقة بتوصل للمية اللي تحت، وبتعرف تستغل المية بكفاءة عالية. ده غير إنها بتوفر 16% من مية الري أصلاً مقارنة بالمحاصيل التقليدية. اطمن يا حاج، إحنا معاك خطوة بخطوة.
 
 ### Farmer Question 4:
 > *" إيه هو الـ ESI والـ TOPSIS والـ NDVI اللي سمعت عنهم دول؟ فهمني بالبلدي. "*
 **Testing Intent:** *Acronym Guard test: Translate biophysical satellite indices into plain Egyptian farming terms.*
 
 - **Model Responder:** `farmer-friendly-core`
-- **Response Latency:** `1228 ms`
+- **Response Latency:** `1297 ms`
 - **Verbatim Agent Reply:**
 
 > يا حاج، عين العقل إنك بتسأل وعايز تفهم كل تفصيلة في خدمتك!
@@ -327,7 +327,7 @@ Testing the live autonomous agricultural agent (`/api/chat`) under **Toshka High
 **Testing Intent:** *Agronomic pushback test: Farmer proposes disastrous non-halotolerant, water-guzzling crops.*
 
 - **Model Responder:** `farmer-friendly-core`
-- **Response Latency:** `858 ms`
+- **Response Latency:** `1159 ms`
 - **Verbatim Agent Reply:**
 
 > يا حاج، عين العقل إنك بتستشير الأول قبل ما تصرف مليم في الأرض!
