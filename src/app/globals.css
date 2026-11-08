@@ -5,20 +5,21 @@
 @tailwind utilities;
 
 :root {
-  --apple-bg: #F5F5F7;
-  --apple-card: rgba(255, 255, 255, 0.90);
-  --apple-border: rgba(0, 0, 0, 0.08);
-  --apple-text-main: #1D1D1F;
-  --apple-text-sub: #86868B;
+  --apple-bg: #0A0A0C;
+  --apple-card: rgba(18, 18, 22, 0.90);
+  --apple-border: rgba(255, 255, 255, 0.08);
+  --apple-text-main: #F5F5F7;
+  --apple-text-sub: #A1A1A6;
   --apple-blue: #0071E3;
   --apple-green: #34C759;
   --apple-amber: #FF9500;
   --apple-red: #FF3B30;
+  color-scheme: dark;
 }
 
 html, body {
-  background-color: var(--apple-bg);
-  color: var(--apple-text-main);
+  background-color: #0A0A0C;
+  color: #F5F5F7;
   font-family: 'Cairo', -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

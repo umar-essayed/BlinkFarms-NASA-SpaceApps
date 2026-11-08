@@ -19,6 +19,7 @@ import {
 import FarmSetupGateway from '@/components/FarmSetupGateway';
 import AgronomicWizard, { WizardAnswers } from '@/components/AgronomicWizard';
 import ProfileModal from '@/components/ProfileModal';
+import PwaInstallPrompt from '@/components/PwaInstallPrompt';
 import { UserProfile } from '@/components/AuthGateway';
 import NasaWeatherCard from '@/components/NasaWeatherCard';
 import ProvenanceBadge from '@/components/ProvenanceBadge';
@@ -382,13 +383,16 @@ export default function BlinkFarmsApp() {
               href="/chat"
               className="px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 text-neutral-600 dark:text-neutral-300 hover:text-emerald-600 dark:hover:text-emerald-400 active:scale-95 font-bold"
             >
-              <img src="/blink-ai-logo.png" alt="Blink AI" className="w-5 h-5 rounded-full object-cover border border-emerald-500/40 shadow-sm" />
-              <span>Blink AI</span>
+              <img src="/blink-ai-logo.png" alt="BlinkAI" className="w-5 h-5 rounded-full object-cover border border-emerald-500/40 shadow-sm" />
+              <span>BlinkAI</span>
             </Link>
           </nav>
 
-          {/* Right Controls: Profile Button + Language Switcher */}
+          {/* Right Controls: PWA Install + Profile Button + Language Switcher */}
           <div className="flex items-center gap-2 shrink-0">
+            {/* PWA Install Button */}
+            <PwaInstallPrompt lang={lang} />
+
             {/* Real Profile Button */}
             <button
               onClick={() => setIsProfileModalOpen(true)}
@@ -1116,8 +1120,8 @@ export default function BlinkFarmsApp() {
           href="/chat"
           className="flex flex-col items-center gap-1 text-[11px] font-bold py-1.5 px-3 rounded-2xl transition-all active:scale-95 text-neutral-400 dark:text-neutral-500 hover:text-emerald-500"
         >
-          <img src="/blink-ai-logo.png" alt="Blink AI" className="w-5 h-5 rounded-full object-cover border border-emerald-500/40 shadow-sm" />
-          <span>Blink AI</span>
+          <img src="/blink-ai-logo.png" alt="BlinkAI" className="w-5 h-5 rounded-full object-cover border border-emerald-500/40 shadow-sm" />
+          <span>BlinkAI</span>
         </Link>
       </nav>
     </div>

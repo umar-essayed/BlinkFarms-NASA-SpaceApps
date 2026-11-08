@@ -52,11 +52,11 @@ export default function OnboardingModal({
       highlight: 'تجديد النيتروجين الطبيعي، كسر دورات الآفات، وزيادة الأرباح.',
     },
     {
-      badge: 'Blink AI — المرشد الصوتي',
+      badge: 'BlinkAI — المرشد الصوتي',
       icon: '🤖',
       logoImg: '/blink-ai-logo.png',
-      title: 'Blink AI — استشر مرشدك الزراعي بالصوت',
-      desc: 'بجانب الخرائط والمؤشرات، يمكنك التحدث مباشرة مع "Blink AI" بصوتك بالبلدي وسؤاله عن الري ومشاكل المحصول، وسيرد عليك صوتياً في جزء من الثانية مع حفظ كل كلمة في سجلك.',
+      title: 'BlinkAI — استشر مرشدك الزراعي بالصوت',
+      desc: 'بجانب الخرائط والمؤشرات، يمكنك التحدث مباشرة مع "BlinkAI" بصوتك بالبلدي وسؤاله عن الري ومشاكل المحصول، وسيرد عليك صوتياً في جزء من الثانية مع حفظ كل كلمة في سجلك.',
       highlight: 'شات صوتي وتفريغ نصي فوري مدعوم بموديل Groq 120B وأرصاد ناسا.',
     },
     {
@@ -91,11 +91,11 @@ export default function OnboardingModal({
       highlight: 'Replenishes biological nitrogen, interrupts pests, and secures margins.',
     },
     {
-      badge: 'Blink AI — Live Voice',
+      badge: 'BlinkAI — Live Voice',
       icon: '🤖',
       logoImg: '/blink-ai-logo.png',
-      title: 'Blink AI — Your Voice Agricultural Copilot',
-      desc: 'Speak directly with Blink AI using your voice. Ask about irrigation, soil compaction, or crop sequences, and receive spoken guidance in real time auto-saved to your chat logs.',
+      title: 'BlinkAI — Your Voice Agricultural Copilot',
+      desc: 'Speak directly with BlinkAI using your voice. Ask about irrigation, soil compaction, or crop sequences, and receive spoken guidance in real time auto-saved to your chat logs.',
       highlight: 'Live interactive voice chat powered by Groq 120B and NASA Earth observations.',
     },
     {
@@ -156,7 +156,7 @@ export default function OnboardingModal({
             {(current as any).logoImg ? (
               <img
                 src={(current as any).logoImg}
-                alt="Blink AI"
+                alt="BlinkAI"
                 className="w-9 h-9 rounded-full object-cover border border-emerald-500/50 shadow-sm"
               />
             ) : (

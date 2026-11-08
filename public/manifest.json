@@ -1,24 +1,52 @@
 {
-  "name": "BlinkFarms — NASA FieldShift & VeloceRoot",
-  "short_name": "BlinkFarms",
-  "description": "NASA-powered biophysical decision system for Flash Drought 14-day early warning and adaptive 3-year crop rotations.",
+  "name": "BlinkFarms & BlinkAI",
+  "short_name": "BlinkAI",
+  "description": "NASA-powered biophysical decision system for Flash Drought 14-day early warning, adaptive crop rotations, and BlinkAI live voice agent.",
+  "id": "/",
+  "scope": "/",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#0071E3",
+  "background_color": "#0A0A0C",
+  "theme_color": "#0A0A0C",
   "orientation": "portrait-primary",
+  "categories": ["agriculture", "weather", "productivity"],
+  "prefer_related_applications": false,
   "icons": [
+    {
+      "src": "/blink-ai-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/blink-ai-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/blink-ai-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/blink-ai-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
     {
       "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ]
 }

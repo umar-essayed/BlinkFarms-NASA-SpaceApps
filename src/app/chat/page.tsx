@@ -7,6 +7,7 @@ import { Language, ChatMessage } from '@/lib/types';
 import MarkdownMessage from '@/components/MarkdownMessage';
 import { SendIcon } from '@/components/Icons';
 import LiveVoiceOverlay from '@/components/LiveVoiceOverlay';
+import PwaInstallPrompt from '@/components/PwaInstallPrompt';
 
 export interface ChatSession {
   id: string;
@@ -342,7 +343,7 @@ export default function DedicatedChatPage() {
   return (
     <div
       dir={lang === 'ar' ? 'rtl' : 'ltr'}
-      className="flex h-[100dvh] max-h-[100dvh] w-full bg-[#F8F9FA] dark:bg-[#0A0A0C] text-[#1D1D1F] dark:text-[#F5F5F7] overflow-hidden font-sans select-none"
+      className="flex h-[100dvh] max-h-[100dvh] w-full bg-[#0A0A0C] text-[#F5F5F7] overflow-hidden font-sans select-none"
     >
       {/* =========================================================================
           1. CHATGPT-LIKE COLLAPSIBLE SIDEBAR
@@ -356,7 +357,7 @@ export default function DedicatedChatPage() {
       )}
 
       <aside
-        className={`fixed md:static inset-y-0 z-50 flex flex-col justify-between w-[290px] bg-white dark:bg-neutral-900 border-x border-black/5 dark:border-white/10 transition-all duration-300 ease-in-out shrink-0 ${
+        className={`fixed md:static inset-y-0 z-50 flex flex-col justify-between w-[290px] bg-[#121216] border-x border-white/10 transition-all duration-300 ease-in-out shrink-0 ${
           isSidebarOpen
             ? 'translate-x-0'
             : lang === 'ar'
@@ -366,15 +367,15 @@ export default function DedicatedChatPage() {
       >
         <div className="flex flex-col h-full p-3.5 overflow-hidden">
           {/* Sidebar Top: Brand & New Chat */}
-          <div className="space-y-2.5 pb-2.5 border-b border-black/5 dark:border-white/10 shrink-0">
+          <div className="space-y-2.5 pb-2.5 border-b border-white/10 shrink-0">
             <div className="flex items-center justify-between">
               <Link href="/" className="flex items-center gap-2">
-                <img src="/blink-ai-logo.png" alt="Blink AI" className="w-7 h-7 rounded-full object-cover border border-emerald-500/40" />
-                <span className="font-black text-sm text-neutral-900 dark:text-white">Blink AI</span>
+                <img src="/blink-ai-logo.png" alt="BlinkAI" className="w-7 h-7 rounded-full object-cover border border-emerald-500/40" />
+                <span className="font-black text-sm text-white">BlinkAI</span>
               </Link>
               <button
                 onClick={() => setIsSidebarOpen(false)}
-                className="p-1 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400"
+                className="p-1 rounded-xl hover:bg-white/10 text-neutral-400"
               >
                 ✕
               </button>
@@ -386,7 +387,7 @@ export default function DedicatedChatPage() {
                 createNewSession();
                 if (window.innerWidth < 768) setIsSidebarOpen(false);
               }}
-              className="w-full py-2 px-3.5 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-sm flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+              className="w-full py-2 px-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-sm flex items-center justify-center gap-1.5 active:scale-95 transition-all"
             >
               <span className="text-base font-bold">+</span>
               <span>{lang === 'ar' ? 'محادثة جديدة' : 'New Chat'}</span>
@@ -408,8 +409,8 @@ export default function DedicatedChatPage() {
                 }}
                 className={`group flex items-center justify-between p-2 rounded-xl cursor-pointer text-xs font-semibold transition-all ${
                   activeSessionId === s.id
-                    ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-bold'
-                    : 'hover:bg-neutral-100 dark:hover:bg-neutral-800/60 text-neutral-700 dark:text-neutral-300'
+                    ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-500/20 font-bold'
+                    : 'hover:bg-white/10 text-neutral-300'
                 }`}
               >
                 <div className="flex items-center gap-2 min-w-0">
@@ -420,7 +421,7 @@ export default function DedicatedChatPage() {
                 <button
                   onClick={(e) => handleDeleteSession(s.id, e)}
                   title={lang === 'ar' ? 'حذف' : 'Delete'}
-                  className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-red-500 hover:bg-red-50 text-[10px] transition-opacity"
+                  className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-red-400 hover:bg-red-950/50 text-[10px] transition-opacity"
                 >
                   🗑️
                 </button>
@@ -429,9 +430,9 @@ export default function DedicatedChatPage() {
           </div>
 
           {/* Sidebar Bottom: Cross-Session Central Memory Box */}
-          <div className="pt-2.5 border-t border-black/5 dark:border-white/10 space-y-2 shrink-0">
-            <div className="p-2.5 rounded-2xl bg-neutral-50 dark:bg-neutral-800/60 space-y-1.5 border border-black/5 dark:border-white/5">
-              <div className="flex items-center justify-between text-[11px] font-bold text-neutral-800 dark:text-neutral-200">
+          <div className="pt-2.5 border-t border-white/10 space-y-2 shrink-0">
+            <div className="p-2.5 rounded-2xl bg-white/5 space-y-1.5 border border-white/5">
+              <div className="flex items-center justify-between text-[11px] font-bold text-neutral-200">
                 <div className="flex items-center gap-1.5">
                   <span>🧠</span>
                   <span>{lang === 'ar' ? 'الذاكرة المركزية الدائمة' : 'Central Memory'}</span>
@@ -467,7 +468,7 @@ export default function DedicatedChatPage() {
 
             <Link
               href="/"
-              className="w-full py-1.5 px-3 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 text-neutral-700 dark:text-neutral-300 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all"
+              className="w-full py-1.5 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-300 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all border border-white/5"
             >
               <span>🛰️</span>
               <span>{lang === 'ar' ? 'الرجوع للرادار والخريطة' : 'Back to Radar'}</span>
@@ -479,34 +480,37 @@ export default function DedicatedChatPage() {
       {/* =========================================================================
           2. MAIN CHAT WORKSPACE (STRICTLY ONE SCREEN - NO SCROLLBAR OUTSIDE)
          ========================================================================= */}
-      <main className="flex-1 flex flex-col h-full overflow-hidden min-w-0">
+      <main className="flex-1 flex flex-col h-full overflow-hidden min-w-0 bg-[#0A0A0C]">
         {/* Top Header Bar */}
-        <header className="h-12 px-3 sm:px-5 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md border-b border-black/5 dark:border-white/10 flex items-center justify-between shrink-0">
+        <header className="h-12 px-3 sm:px-5 bg-[#121216]/90 backdrop-blur-md border-b border-white/10 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="p-1.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 text-neutral-800 dark:text-neutral-200 text-xs font-bold transition-all active:scale-95"
+              className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all active:scale-95"
               title={lang === 'ar' ? 'المحادثات والذاكرة' : 'Toggle Sidebar'}
             >
               ☰
             </button>
 
             <div className="flex items-center gap-2 min-w-0">
-              <img src="/blink-ai-logo.png" alt="Blink AI" className="w-6 h-6 rounded-full object-cover border border-emerald-500/40 shrink-0 shadow-sm" />
+              <img src="/blink-ai-logo.png" alt="BlinkAI" className="w-6 h-6 rounded-full object-cover border border-emerald-500/40 shrink-0 shadow-sm" />
               <div className="truncate">
-                <span className="text-xs font-bold text-neutral-900 dark:text-white block truncate">
-                  Blink AI — {activeSession?.title || (lang === 'ar' ? 'مساعدك الزراعي' : 'Advisor')}
+                <span className="text-xs font-bold text-white block truncate">
+                  BlinkAI — {activeSession?.title || (lang === 'ar' ? 'مساعدك الزراعي' : 'Advisor')}
                 </span>
               </div>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
+            {/* PWA Install Button */}
+            <PwaInstallPrompt lang={lang} />
+
             {/* Live Voice Call Button in Header */}
             <button
               onClick={() => setIsVoiceOverlayOpen(true)}
               className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-[11px] font-bold shadow-sm shadow-emerald-500/20 active:scale-95 transition-all"
-              title={lang === 'ar' ? 'تحدث مع المرشد بالصوت المباشر' : 'Live Voice Call with Advisor'}
+              title={lang === 'ar' ? 'تحدث مع BlinkAI بالصوت المباشر' : 'Live Voice Call with BlinkAI'}
             >
               <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
               <span>{lang === 'ar' ? 'مكالمة صوتية' : 'Live Voice'}</span>
@@ -514,13 +518,13 @@ export default function DedicatedChatPage() {
 
             <button
               onClick={toggleLang}
-              className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 active:scale-95 transition-all"
+              className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-white/10 text-neutral-200 active:scale-95 transition-all"
             >
               {lang === 'ar' ? 'English' : 'عربي'}
             </button>
             <Link
               href="/"
-              className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-300 active:scale-95 transition-all flex items-center gap-1"
+              className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-white/10 text-neutral-300 hover:bg-white/20 active:scale-95 transition-all flex items-center gap-1"
             >
               <span>✕</span>
             </Link>
@@ -538,7 +542,7 @@ export default function DedicatedChatPage() {
                 {m.sender === 'assistant' && (
                   <img
                     src="/blink-ai-logo.png"
-                    alt="Blink AI"
+                    alt="BlinkAI"
                     className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover border border-emerald-500/40 shadow-sm shrink-0"
                   />
                 )}
@@ -546,17 +550,17 @@ export default function DedicatedChatPage() {
                 <div
                   className={`relative group max-w-[85%] sm:max-w-[75%] rounded-2xl px-3.5 py-2.5 text-xs sm:text-[13px] leading-relaxed shadow-sm ${
                     m.sender === 'user'
-                      ? 'bg-blue-600 text-white rounded-br-xs'
-                      : 'bg-white dark:bg-neutral-800/90 text-neutral-800 dark:text-neutral-100 border border-black/5 dark:border-white/5 rounded-bl-xs'
+                      ? 'bg-emerald-600 text-white rounded-br-xs'
+                      : 'bg-[#16161C] text-neutral-100 border border-white/10 rounded-bl-xs'
                   }`}
                 >
                   <MarkdownMessage content={m.content || ''} />
                   
-                  <div className="flex items-center justify-between mt-1.5 pt-1 border-t border-black/5 dark:border-white/5">
+                  <div className="flex items-center justify-between mt-1.5 pt-1 border-t border-white/10">
                     {m.sender === 'assistant' ? (
                       <button
                         onClick={() => handleSpeakMessage(m.id, m.content || '')}
-                        className="text-[11px] p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-500 hover:text-blue-600 dark:hover:text-blue-400 transition-all flex items-center gap-1 font-medium"
+                        className="text-[11px] p-1 rounded-lg hover:bg-white/10 text-neutral-400 hover:text-emerald-400 transition-all flex items-center gap-1 font-medium"
                         title={speakingMessageId === m.id ? 'إيقاف الصوت' : 'استمع للإجابة بصوت المرشد'}
                       >
                         <span>{speakingMessageId === m.id ? '⏹️' : '🔊'}</span>
@@ -585,13 +589,13 @@ export default function DedicatedChatPage() {
               <div className="flex gap-2.5 items-center justify-start">
                 <img
                   src="/blink-ai-logo.png"
-                  alt="Blink AI"
+                  alt="BlinkAI"
                   className="w-7 h-7 rounded-full object-cover border border-emerald-500/40 shadow-sm shrink-0 animate-pulse"
                 />
-                <div className="bg-white dark:bg-neutral-800/90 border border-black/5 dark:border-white/5 rounded-2xl px-4 py-3 shadow-sm flex items-center gap-1.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-400 animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <div className="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-400 animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <div className="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+                <div className="bg-[#16161C] border border-white/10 rounded-2xl px-4 py-3 shadow-sm flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-bounce" style={{ animationDelay: '300ms' }} />
                 </div>
               </div>
             )}
@@ -607,7 +611,7 @@ export default function DedicatedChatPage() {
               <button
                 key={idx}
                 onClick={() => handleSendMessage(p)}
-                className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-white dark:bg-neutral-800/80 hover:bg-neutral-100 dark:hover:bg-neutral-700 border border-black/5 dark:border-white/5 text-neutral-600 dark:text-neutral-300 whitespace-nowrap active:scale-95 transition-all shrink-0"
+                className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-[#16161C] hover:bg-white/10 border border-white/10 text-neutral-300 whitespace-nowrap active:scale-95 transition-all shrink-0"
               >
                 {p}
               </button>
@@ -615,8 +619,8 @@ export default function DedicatedChatPage() {
           </div>
         )}
 
-        {/* Fixed Bottom Input Bar (Sticky above bottom of screen) */}
-        <div className="p-2.5 sm:p-3.5 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md border-t border-black/5 dark:border-white/10 shrink-0">
+        {/* Fixed Bottom Input Bar (Sticky above bottom of screen, zero white gap) */}
+        <div className="p-2.5 sm:p-3.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-[#121216] border-t border-white/10 shrink-0">
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -628,7 +632,7 @@ export default function DedicatedChatPage() {
             <button
               type="button"
               onClick={() => setIsVoiceOverlayOpen(true)}
-              className="p-2.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 shadow-sm active:scale-95 transition-all shrink-0 flex items-center justify-center text-sm"
+              className="p-2.5 rounded-2xl bg-emerald-950/60 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-900/50 shadow-sm active:scale-95 transition-all shrink-0 flex items-center justify-center text-sm"
               title={lang === 'ar' ? 'محادثة صوتية حية مع المرشد' : 'Live Voice Call'}
             >
               🎙️
@@ -640,12 +644,12 @@ export default function DedicatedChatPage() {
               onChange={(e) => setInputText(e.target.value)}
               placeholder={lang === 'ar' ? 'اسأل عن ري أرضك، الطقس، أو الدورة الزراعية...' : 'Ask about irrigation, weather, or crops...'}
               disabled={isChatLoading}
-              className="flex-1 px-3.5 py-2.5 rounded-2xl bg-neutral-100 dark:bg-neutral-800 text-xs sm:text-sm font-medium text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-600 border border-black/5 dark:border-white/5"
+              className="flex-1 px-3.5 py-2.5 rounded-2xl bg-[#1A1A22] text-xs sm:text-sm font-medium text-white placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 border border-white/10"
             />
             <button
               type="submit"
               disabled={isChatLoading || !inputText.trim()}
-              className="p-2.5 rounded-2xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white shadow-md active:scale-95 transition-all shrink-0"
+              className="p-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white shadow-md active:scale-95 transition-all shrink-0"
             >
               <SendIcon className="w-4 h-4 rtl:rotate-180" />
             </button>

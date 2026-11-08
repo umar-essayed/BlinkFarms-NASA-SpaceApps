@@ -321,12 +321,12 @@ export default function LiveVoiceOverlay({
         <div className="flex items-center gap-2.5">
           <img
             src="/blink-ai-logo.png"
-            alt="Blink AI"
+            alt="BlinkAI"
             className="w-9 h-9 rounded-full object-cover border border-emerald-500/50 shadow-emerald-500/30 shadow-md shrink-0"
           />
           <div className="flex flex-col">
             <span className="text-sm font-bold text-white flex items-center gap-1.5">
-              <span>Blink AI Voice Mode</span>
+              <span>BlinkAI Voice Mode</span>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-mono">
                 Groq 120B
               </span>
@@ -334,7 +334,7 @@ export default function LiveVoiceOverlay({
             <span className="text-[11px] text-neutral-400">
               {voiceState === 'listening' && (lang === 'ar' ? 'أنا سامعك.. اتفضل اتكلم' : 'Listening to you...')}
               {voiceState === 'processing' && (lang === 'ar' ? 'جاري التحليل واستدعاء بيانات ناسا...' : 'Processing with NASA Data...')}
-              {voiceState === 'speaking' && (lang === 'ar' ? 'Blink AI يتحدث الآن' : 'Blink AI is speaking...')}
+              {voiceState === 'speaking' && (lang === 'ar' ? 'BlinkAI يتحدث الآن' : 'BlinkAI is speaking...')}
               {voiceState === 'idle' && (lang === 'ar' ? 'جاهز للمحادثة' : 'Ready')}
             </span>
           </div>
@@ -379,7 +379,7 @@ export default function LiveVoiceOverlay({
             }`}
           />
 
-          {/* Core Interactive Glowing Orb with Blink AI Brand Logo */}
+          {/* Core Interactive Glowing Orb with BlinkAI Brand Logo */}
           <div
             onClick={() => {
               if (voiceState === 'listening') {
@@ -403,14 +403,14 @@ export default function LiveVoiceOverlay({
           >
             <img
               src="/blink-ai-logo.png"
-              alt="Blink AI"
+              alt="BlinkAI"
               className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-2 border-white/30 shadow-2xl mb-1.5 transition-transform duration-200"
               style={{
                 transform: voiceState === 'listening' ? `scale(${1 + volumeLevel / 180})` : undefined,
               }}
             />
             <span className="text-[11px] font-black tracking-wide text-white drop-shadow">
-              Blink AI
+              BlinkAI
             </span>
             <span className="text-[9px] font-semibold text-white/80">
               {voiceState === 'listening' && (lang === 'ar' ? 'المس للإرسال' : 'Tap to send')}
