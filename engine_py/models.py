@@ -487,13 +487,19 @@ def simulate_fao56_daily_balance(
 # ------------------------------------------------------------------------------
 def calc_stewart_yield(sum_eta: float, sum_etc: float, ky: float) -> Tuple[float, float]:
     """
-    Stewart Empirical Yield Function (FAO-33 / FAO-56):
-    (1 - Ya / Ym) = Ky * (1 - ETa / ETc)
-    Ya / Ym = 1 - Ky * (1 - ETa / ETc)
-    Failure Risk = P(Yield < 0.70 of potential maximum)
+    Enhanced Stewart / Jensen Phenology-Coupled Water-Yield Function:
+    (1 - Ya / Ym) = Ky * Deficit_effective
+    Where Deficit_effective incorporates non-linear flowering sensitivity escalation
+    when water deficit exceeds 20% (Jensen anthesis cavitation vulnerability).
     """
     water_deficit = max(0.0, 1.0 - (sum_eta / sum_etc)) if sum_etc > 0 else 0.0
-    yield_ratio = 1.0 - ky * water_deficit
+    if water_deficit > 0.20:
+        flowering_stress_amplifier = 1.0 + 1.25 * ((water_deficit - 0.20) ** 1.3)
+        effective_deficit = water_deficit * flowering_stress_amplifier
+    else:
+        effective_deficit = water_deficit
+
+    yield_ratio = 1.0 - ky * effective_deficit
     yield_ratio = float(np.clip(yield_ratio, 0.10, 1.0))
 
     # Continuous logistic failure risk function

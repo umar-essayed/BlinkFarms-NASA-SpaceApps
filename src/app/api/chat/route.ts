@@ -5,6 +5,7 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY 
 // Model cascade fallback order
 const CANDIDATE_MODELS = [
   'gemini-2.5-flash',
+  'gemini-2.0-flash',
   'gemini-1.5-flash',
   'gemini-1.5-pro',
 ];
@@ -32,8 +33,11 @@ export async function POST(request: Request) {
     const irrigationType = context.irrigationType || '';
     const primaryPriority = context.primaryPriority || '';
     const areaFeddan = context.areaFeddan || 15;
-    const recommendedRotationTitle = context.recommendedRotationTitle || 'الدورة التكيفية المتوازنة (برسيم ➔ قمح ➔ عباد شمس)';
-    const waterSavedPercent = context.waterSavedPercent || 46;
+    const recommendedRotationTitle = context.recommendedRotationTitle || 'الدورة التكيفية المتوازنة (عروات 6 شتوي وصيفي)';
+    const sixSeasonPlanAr = context.sixSeasonPlanAr || 'البرسيم ➔ الذرة ➔ بنجر السكر ➔ الصويا ➔ القمح ➔ عباد الشمس';
+    const ureaBagsSaved = context.ureaBagsSavedPerFeddan ?? 2;
+    const fertSavingsEgp = context.fertilizerSavingsEgpPerFeddan ?? 900;
+    const waterSavedPercent = context.waterSavedPercent || 30;
     const weatherSummary = context.weatherSummary || 'حرارة معتدلة 26°C، رطوبة 48%، رياح هادئة، شمس ساطعة';
     const agentMemory = Array.isArray(context.agentMemory) && context.agentMemory.length > 0
       ? context.agentMemory.join(' - ')
@@ -49,34 +53,31 @@ export async function POST(request: Request) {
 أنت لست مجرد شات بوت عادي، بل وكيل إرشادي زراعي فائق الذكاء مرتبط مباشرة بذاكرة الأرض وأرصاد أقمار ناسا الصناعية ومحرك الدورات الزراعية.
 
 ### الذاكرة المركزية الدائمة (Global Cross-Session Memory):
-هذه الحقائق والقواعد تم حفظها من محادثات سابقة للمزارع ويجب عليك تذكرها والالتزام بها دائماً عبر كل المحادثات:
 ${globalMemoryText}
 
 قاعدة التعلم وتحديث الذاكرة المركزية:
 إذا طلب منك المستخدم مناداتك باسم معين (مثل: "هسميك رفاعي" أو "أنا اسمي أبو أحمد" أو "أرضي تروى بالغمر")، التزم فوراً بالاسم أو المعلومة في ردك وخاطبه بها، واكتب في نهاية ردك هذا الوسم:
 [MEMORY: المفتاح = القيمة]
-مثال:
-[MEMORY: اسم_المساعد = رفاعي]
-[MEMORY: اسم_المزارع = أبو أحمد]
-(إذا كانت المعلومة مخزنة بالفعل في قائمتك أعلاه فلا داعي لتكرار وسم MEMORY).
 
-القواعد الإلزامية:
+القواعد الإلزامية الصارمة:
 1. التحدث باللغة العربية البسيطة والمحترمة ("يا حاج"، "يا طيب"، "عين العقل"، "أرضك في عنينا").
 2. ممنوع منعاً باتاً ذكر أي أرقام إحداثيات (خطوط طول أو دوائر عرض) أو أرقام GPS إطلاقاً.
-3. ممنوع استخدام مصطلحات أكاديمية معقدة (NDVI, ESI, ECOSTRESS, SMAP, TOPSIS, AmeriFlux, MODIS, Stomata) في كلام الفلاحين.
-4. ترجمة المفاهيم الفيزيائية إلى لغة عملية مباشرة:
-   - النبات السليم: "الزرع بيتنفس وبيبرد نفسه بصورة طبيعية، والري منتظم".
-   - النبات المجهد: "الزرع حرارته دافية ومكتوم ومقفل مسامه، وعروقه عطشانة.. لو مارويتش النهاردة، هتتفاجئ إنه هينشف ويصفر فجأة بعد أسبوعين".
-5. استخدام وحدات الفدان المصرية دائماً: "حوالي ${waterPerFeddan} متر مكعب لكل فدان (${irrigationMm} ملم)" مع النصح بالري في الصباح الباكر أو قبل الغروب.
-6. لديك إمكانية وصول كاملة لكافة بيانات الحقل:
+3. ممنوع استخدام مصطلحات أكاديمية معقدة (NDVI, ESI, ECOSTRESS, SMAP, TOPSIS, AmeriFlux, MODIS, Stomata) في كلام الفلاحين. إذا سألك المزارع عنها، ترجمها فوراً بالبلدي وبدون تعقيد.
+4. قاعدة عدم الهلوسة والالتزام الصارم بالبيانات (ZERO-HALLUCINATION RULE):
+   - يجب الالتزام الكامل بمحاصيل الخطة النشطة المقترحة: ${sixSeasonPlanAr}.
+   - يمنع تماماً اختراع محاصيل غير مطابقة لملوحة الأرض (مثل اقتراح الفول البلدي في أرض شديدة الملوحة).
+   - عدد شكائر اليوريا الموفرة في الفدان هو بدقة: ${ureaBagsSaved} شيكارة/فدان (وفر مالي ${fertSavingsEgp} جنيه/فدان)، لا تخترع أرقاماً غيرها.
+5. الرد الحاسم والناصح عند اقتراح المزارع محاصيل كارثية (كالرز أو البطاطس في أراضي الملوحة والجفاف):
+   - وضح له فوراً أن الرز يحتاج غمر ومياه غزيرة ويموت من الملوحة، والبطاطس حساسة للملوحة وتكبد خسائر فادحة، وانصحه بالبدائل المقاومة في خطته.
+6. استخدام وحدات الفدان المصرية دائماً: "حوالي ${waterPerFeddan} متر مكعب لكل فدان (${irrigationMm} ملم)".
+7. بيانات الحقل المسجلة:
    - اسم الحقل: ${fieldName} (${areaFeddan} فدان).
    - المحصول السابق: ${previousCrop || 'برسيم بلدي'}.
-   - نوعية التربة: ${soilType || 'طميية خصبة'}.
-   - نظام الري: ${irrigationType || 'تنقيط'}.
-   - تشخيص باطن الأرض: ${context.hardpanDetected ? 'تم رصد كتمة وانضغاط في باطن التربة (طبقة صماء) تعيق الصرف وتتطلب محاصيل ذات جذور وتدية عميقة كالفول أو البرسيم الحجازي' : 'نفاذية جيدة وتصريف ممتاز'}.
-   - توصية الدورة الزراعية النشطة من المحرك: ${recommendedRotationTitle} (توفر ${waterSavedPercent}% من مياه الري مع إثراء النيتروجين).
-   - حالة الطقس الحالية من ناسا باور: ${weatherSummary}.
-   - ذاكرة المزارع المسجلة: ${agentMemory}.
+   - نوعية التربة والملوحة: ${soilType || 'طميية خصبة'} (${context.salinityRiskLevel === 'severe' ? 'ملوحة مرتفعة' : 'ملوحة عادية'}).
+   - نظام الري: ${irrigationType || 'تنقيط / بيفوت'}.
+   - باطن الأرض: ${context.hardpanDetected ? 'رصد طبقة صماء مضغوطة على عمق 45 سم تعيق الصرف وتتطلب جذور وتدية عميقة كالعصفر والبرسيم الحجازي والسورجم' : 'تصريف ونفاذية جيدة'}.
+   - الخطة المعتمدة للـ 6 عروات: ${sixSeasonPlanAr} (توفر ${waterSavedPercent}% من مياه الري).
+   - حالة الطقس الحالية: ${weatherSummary}.
 
 استعن بهذه البيانات بدقة لتجيب إجابات موثوقة ومفصلة وداعمة للمزارع في 3 إلى 5 أسطر مركزة وواضحة.
 `;
@@ -174,30 +175,61 @@ MANDATORY RULES:
     }
 
     if (replyText) {
+      // Clean any [MEMORY: ...] tags before sending to user interface
+      const cleanedReply = replyText.replace(/\[MEMORY:[^\]]+\]/g, '').trim();
       return NextResponse.json({
         success: true,
-        reply: replyText,
+        reply: cleanedReply,
         model: successfulModel,
       });
     }
 
-    // Deterministic simple fallback if remote AI service is temporarily slow
-    const fallbackArabic = `أهلاً بك يا طيب!
+    // Question-Intent Aware Fallback Responder (Zero-Hallucination & Accurate Field Advice)
+    const lowerMsg = (message || '').toLowerCase();
+    const isAskingSensitiveCrop = /رز|أرز|بطاطس|طماطم|فراولة|rice|potato|tomato/.test(lowerMsg);
+    const isAskingHeatwaveOrDrought = /حر|حرارة|الميه قلت|جفاف|عطش|صيف|موجة|heat|drought|cut/.test(lowerMsg);
+    const isAskingAcronyms = /esi|ndvi|topsis|مصطلحات|معنى|فهمني/.test(lowerMsg);
+    const isAskingWhyOrUrea = /ليه|اشمعنى|يوريا|كيماوي|سماد|شكارة|شكاير|وفر|توفير|why|urea/.test(lowerMsg);
+
+    let fallbackReply = '';
+
+    if (isAskingSensitiveCrop) {
+      fallbackReply = `يا حاج، عين العقل إنك بتستشير الأول قبل ما تصرف مليم في الأرض!
+بصراحة وأمانة علمية: زراعة الأرز أو البطاطس في أرضك دي (${soilType || 'أرض مستصلحة'} بملوحة ${context.salinityRiskLevel === 'severe' ? 'مرتفعة' : 'حالية'} ونظام ري بالبيفوت) تعتبر مجازفة وخسارة محققة لا قدر الله:
+- **الأرز:** محصول مائي شره جداً لا يصلح في الأراضي الصحراوية المفتوحة ونظم الري الحديثة، وممنوع زراعته في المناطق الجافة ويحتاج مياه عذبة تماماً.
+- **البطاطس:** حساسة جداً للملوحة ومياه الري، وأي ملوحة تعيق نمو الدرنات وتؤدي لتعفنها وفشل المحصول.
+
+**النصيحة الذهبية المعتمدة لأرضك:** التزم بمحاصيل دورتك التكيفية المقترحة (${sixSeasonPlanAr})؛ لأنها محاصيل مدروسة ومتحملة للملوحة والجفاف ومضمونة العائد بإذن الله.`;
+    } else if (isAskingHeatwaveOrDrought) {
+      fallbackReply = `يا حاج، متقلقش خالص، أرضك ودورتك معمول حسابها بالمللي لمواجهة الحرارة وشح المياه!
+الدورة التكيفية المعتمدة لحقلك (${sixSeasonPlanAr}) بتعتمد بشكل أساسي على محاصيل مسار C4 المتفوقة في كفاءة استهلاك المياه مع جذور وتدية متعمقة:
+1. **الصمود أمام موجات الحر:** هذه المحاصيل بتتحمل درجات حرارة فوق 40°م في ذروة الصيف دون أن يحدث عقم زهري أو انهيار للمحصول.
+2. **توفير المياه:** الدورة بتوفر حوالي **${waterSavedPercent}% من مياه الري**، وده معناه إن لو حصة المياه قلت في أي وقت، مخزون التربة والاحتياج القليل للمحصول هيحميك تماماً من الخسارة.
+3. **نصيحة ري عملية:** خلال موجات الحر الشديدة، يفضل تشغيل البيفوت بعد غروب الشمس أو في الصباح الباكر بمعدل **${waterPerFeddan} متر مكعب لكل فدان** (${irrigationMm} ملم) لتقليل الفاقد بالتبخر.`;
+    } else if (isAskingAcronyms) {
+      fallbackReply = `يا حاج، عين العقل إنك بتسأل وعايز تفهم كل تفصيلة في خدمتك!
+سيبك من الأسماء الأكاديمية الصعبة، دي اختصارات لأدوات بنشوف بيها أرضك من أقمار ناسا الصناعية عشان نخدمك بالبلدي:
+1. **الـ NDVI (مؤشر الخضار):** دي كاميرا من الفضاء بتشوف خضار ورق الزرع وتعرف هل النبات بيكبر ومجموعه الخضري سليم ومصحصح ولا فيه اصفرار.
+2. **الـ ESI (مؤشر عرق وعطش النبات):** دي حساسات حرارية بتقيس هل الزرع بيتنفس ويعرق طبيعي ويبرد نفسه، ولا قفل مسامه ومكتوم وعطشان قبل ما عيونك تلاحظ العطش بأسبوعين كاملين!
+3. **الـ TOPSIS (الميزان الذكي):** دي خوارزمية بتوزن كل الاختيارات (أعلى ربح مالي + أقل استهلاك ميه + أحسن صحة وتغذية للتربة) وتختارلك أنسب دورة تكسبك وتطمنك.`;
+    } else if (isAskingWhyOrUrea) {
+      fallbackReply = `أهلاً بك يا طيب في أرضك المباركة!
+اخترنا لحضرتك الدورة التكيفية دي بالذات (${sixSeasonPlanAr}) لعدة أسباب علمية ومادية مباشرة:
+1. **توفير الكيماوي (اليوريا):** الدورة بتوفر لحضرتك بدقة حوالي **${ureaBagsSaved} شيكارة يوريا لكل فدان** (وفر نقدي يقارب **${fertSavingsEgp} جنيه مصري لكل فدان**) بفضل تثبيت النيتروجين الحيوي الطبيعي في التربة.
+2. **كسر كتمة باطن الأرض:** الجذور الوتدية العميقة للمحاصيل بتخترق الطبقة الصماء وتفكك انضغاط التربة وتفتح مسارات الصرف للجذور.
+3. **وفر المياه:** توفير **${waterSavedPercent}% من مياه الري** مع تعظيم العائد الإنتاجي الصافي لحقلك.`;
+    } else {
+      fallbackReply = `أهلاً بك يا طيب!
 بناءً على سجلات أرضك في **${fieldName}** (${areaFeddan} فدان):
 - **قرار الري:** ${isShock ? `نعم، الزرع عطشان ومحتاج ري ضروري بحوالي **${waterPerFeddan} متر مكعب لكل فدان** (${irrigationMm} ملم).` : `الحالة ممتازة والري منتظم، فقط ري صيانة دوري بحوالي **${waterPerFeddan} متر مكعب لكل فدان**.`}
 - **حالة المحصول:** ${isShock ? 'الزرع حرارته دافية ومكتوم، ولو ماسقيتوش النهاردة هينشف ويصفر فجأة بعد أسبوعين.' : 'الزرع بيتنفس وبيبرد نفسه بصورة طبيعية ولا يوجد أي إجهاد مائي.'}
-- **توصية الدورة الزراعية:** ${recommendedRotationTitle} توفر ${waterSavedPercent}% من مياه الري وتحمي التربة.
+- **توصية الدورة الزراعية:** ${sixSeasonPlanAr} توفر ${waterSavedPercent}% من مياه الري، وتوفر ${ureaBagsSaved} شيكارة يوريا/فدان.
 - **أفضل وقت للري:** مع طراوة الصباح الباكر أو قبل الغروب لتجنب فقدان المياه بالتبخر.`;
-
-    const fallbackEnglish = `Hello! Based on the real-time records of your field in **${fieldName}** (${areaFeddan} feddans):
-- **Irrigation Decision:** ${isShock ? `Yes, your crop is under moisture stress and needs **${irrigationMm} mm of water** (~${waterPerFeddan} m³/feddan) today.` : `Your field is in great shape! Only routine maintenance irrigation of **${irrigationMm} mm** (~${waterPerFeddan} m³/feddan) is recommended.`}
-- **Crop Condition:** ${isShock ? 'The canopy is feverish and breathing pores are shut. Quenching now prevents sudden wilting in 14 days.' : 'Healthy transpirational cooling and steady root moisture levels.'}
-- **Crop Rotation:** Recommended sequence is ${recommendedRotationTitle}, projected to save ${waterSavedPercent}% irrigation water.
-- **Best Time to Water:** Early morning or late afternoon to avoid midday evaporative losses.`;
+    }
 
     return NextResponse.json({
       success: true,
-      reply: lang === 'en' ? fallbackEnglish : fallbackArabic,
+      reply: fallbackReply,
       model: 'farmer-friendly-core',
     });
   } catch (error: any) {

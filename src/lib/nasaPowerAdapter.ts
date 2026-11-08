@@ -83,8 +83,19 @@ export async function fetchNasaPowerDaily(
             const tMax = params.T2M_MAX?.[d] ?? t2m + 5;
             const tMin = params.T2M_MIN?.[d] ?? t2m - 5;
             const rh = params.RH2M?.[d] ?? 45;
-            const rawSw = params.ALLSKY_SFC_SW_DWN?.[d];
-            const swDwnMj = (rawSw !== undefined && rawSw > 0) ? rawSw : 22.5; // MJ/m^2/day (NASA -999 missing flag guard)
+            // Find the most recent valid solar radiation observation (> 0) across available dates
+            let validSwMj: number | undefined;
+            if (params.ALLSKY_SFC_SW_DWN) {
+              for (let j = dates.length - 1; j >= 0; j--) {
+                const swVal = params.ALLSKY_SFC_SW_DWN[dates[j]];
+                if (swVal !== undefined && swVal > 0) {
+                  validSwMj = swVal;
+                  break;
+                }
+              }
+            }
+            // If still missing, apply latitude-sensitive solar climatology (Toshka gets more insolation than Delta)
+            const swDwnMj = validSwMj ?? (19.0 + Math.max(0, 32.0 - validLat) * 0.7);
             const swWm2 = (swDwnMj * 1000000) / 86400; // convert to average W/m^2
             const ws = params.WS2M?.[d] ?? 2.5;
             const rain = params.PRECTOTCORR?.[d] ?? 0;

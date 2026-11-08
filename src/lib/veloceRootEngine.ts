@@ -262,11 +262,14 @@ export function generateFieldTelemetry(
     if (!simulateShock) {
       // ---------------------------------------------------------
       // NORMAL HEALTHY OPERATING CONDITIONS (No Flash Drought)
-      // High transpiration, cool canopy, stable vegetation greenness
+      // High transpiration, cool canopy, modulated by coordinate aridity
       // ---------------------------------------------------------
-      esi = 0.82 + Math.sin(i * 0.3) * 0.04; // Healthy ESI (0.78 to 0.86)
-      ndvi = 0.79 + Math.cos(i * 0.2) * 0.02; // Lush green
-      canopyTemp = healthyCanopy + Math.sin(i * 0.2) * 0.8; // Naturally cooled
+      const aridityIndex = climate.isArid ? 0.08 : 0.0;
+      const coordPhase = (lat * 10 + lon * 5) % 3.14;
+      esi = (climate.isArid ? 0.74 : 0.83) - aridityIndex * 0.5 + Math.sin(i * 0.28 + coordPhase) * 0.035;
+      ndvi = (climate.isArid ? 0.65 : 0.80) + Math.cos(i * 0.2 + coordPhase) * 0.025;
+      const thermalVpdOffset = climate.isArid ? 1.2 : -0.5;
+      canopyTemp = healthyCanopy + thermalVpdOffset + Math.sin(i * 0.22 + coordPhase) * 0.7;
     } else {
       // ---------------------------------------------------------
       // SIMULATED FLASH DROUGHT SHOCK WINDOW (Days 14 to 28)

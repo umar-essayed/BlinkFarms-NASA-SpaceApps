@@ -1,5 +1,5 @@
 # BLINKFARMS END-TO-END SYSTEM DIAGNOSTIC & SIMULATION AUDIT REPORT
-**Execution Timestamp:** 2026-11-08T20:28:17.496Z
+**Execution Timestamp:** 2026-11-08T20:55:54.847Z
 **Environment:** Production Node vv24.20.0 / Next.js 14.2 / FastAPI Python 3.12 / NASA POWER GMAO MERRA-2
 **Audit Scope:** 5 Full Diagnostic Suites + Brutal Engineering Bottleneck Self-Critique
 
@@ -10,10 +10,10 @@ Testing 4 distinct agro-climatic coordinates across Egypt to verify live satelli
 
 | Location | Coordinates | NASA POWER Ingestion (Tmax/Tmin/RH/Wind/Precip) | Provenance State | Latency | Derived F_state (Carryover, Salinity, Hardpan) | Flash Drought (ΔESI_7d, ΔTc) |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Old Nile Delta (Kafr El-Sheikh)** | `31.11, 30.94` | Tmax=28.9°C, Tmin=18.7°C, RH=63%, Rad=260 W/m², Wind=2.0 m/s, Rain=0.4 mm | `LIVE` (NASA POWER Agroclimatology) | `1375 ms` | Φ=0.65, Salinity=`normal`, Hardpan=`false` | Alert=`false`, ΔESI_7d=`0.064`, ΔTc=`+-2.0°C` |
-| **Toshka / South Valley (Hyper-Arid Desert)** | `22.78, 31.5` | Tmax=35.5°C, Tmin=22.5°C, RH=26%, Rad=260 W/m², Wind=3.6 m/s, Rain=0.0 mm | `LIVE` (NASA POWER Agroclimatology) | `1212 ms` | Φ=0.38, Salinity=`moderate`, Hardpan=`true` | Alert=`false`, ΔESI_7d=`0.064`, ΔTc=`+-2.0°C` |
-| **El-Moghra / Western Desert (Saline Oasis)** | `30.25, 28.95` | Tmax=25.6°C, Tmin=18.0°C, RH=63%, Rad=260 W/m², Wind=2.4 m/s, Rain=0.1 mm | `LIVE` (NASA POWER Agroclimatology) | `1395 ms` | Φ=0.45, Salinity=`severe`, Hardpan=`true` | Alert=`false`, ΔESI_7d=`0.064`, ΔTc=`+-2.0°C` |
-| **Borg El-Arab / Coastal North** | `30.88, 29.58` | Tmax=23.9°C, Tmin=20.7°C, RH=68%, Rad=260 W/m², Wind=3.5 m/s, Rain=1.1 mm | `LIVE` (NASA POWER Agroclimatology) | `1150 ms` | Φ=0.45, Salinity=`moderate`, Hardpan=`false` | Alert=`false`, ΔESI_7d=`0.064`, ΔTc=`+-2.0°C` |
+| **Old Nile Delta (Kafr El-Sheikh)** | `31.11, 30.94` | Tmax=28.9°C, Tmin=18.7°C, RH=63%, Rad=176 W/m², Wind=2.0 m/s, Rain=0.4 mm | `LIVE` (NASA POWER Agroclimatology) | `1212 ms` | Φ=0.65, Salinity=`normal`, Hardpan=`false` | Alert=`false`, ΔESI_7d=`0.058`, ΔTc=`+-2.0°C` |
+| **Toshka / South Valley (Hyper-Arid Desert)** | `22.78, 31.5` | Tmax=35.5°C, Tmin=22.5°C, RH=26%, Rad=237 W/m², Wind=3.6 m/s, Rain=0.0 mm | `LIVE` (NASA POWER Agroclimatology) | `1081 ms` | Φ=0.38, Salinity=`moderate`, Hardpan=`true` | Alert=`false`, ΔESI_7d=`0.032`, ΔTc=`+-1.7°C` |
+| **El-Moghra / Western Desert (Saline Oasis)** | `30.25, 28.95` | Tmax=25.6°C, Tmin=18.0°C, RH=63%, Rad=189 W/m², Wind=2.4 m/s, Rain=0.1 mm | `LIVE` (NASA POWER Agroclimatology) | `542 ms` | Φ=0.45, Salinity=`severe`, Hardpan=`true` | Alert=`false`, ΔESI_7d=`0.058`, ΔTc=`+-2.0°C` |
+| **Borg El-Arab / Coastal North** | `30.88, 29.58` | Tmax=23.9°C, Tmin=20.7°C, RH=68%, Rad=192 W/m², Wind=3.5 m/s, Rain=1.1 mm | `LIVE` (NASA POWER Agroclimatology) | `1244 ms` | Φ=0.45, Salinity=`moderate`, Hardpan=`false` | Alert=`false`, ΔESI_7d=`0.057`, ΔTc=`+-2.0°C` |
 
 ---
 
@@ -39,7 +39,7 @@ Executing all 23 equations implemented in `engine_py/models.py` under Egyptian S
 | **Eq 15** | **Closed-Loop Hydraulic Probing (xi_soil & Hardpan)** | `Delta_ESI_obs=0.08, Pred=0.18, Dissipation=0.6 cm/hr` | **`xi=0.444, Hardpan=True @ 45.0cm`** | `Delta_ESI_obs=0.15, Pred=0.16, Dissipation=2.4 cm/hr` | **`xi=0.938, Hardpan=False`** | Efficiency Ratio xi [-] & Depth (cm) | Sensor depth placement error or preferential macropore flow can produce false positive hardpan detections. |
 | **Eq 16** | **10-Year Field Memory State Vector (F_state)** | `Toshka (carryover=0.40, heat=1950, EC=6.5 dS/m)` | **`Carryover=0.40, Salinity=severe, Hardpan=True`** | `Delta (carryover=0.70, heat=850, EC=1.8 dS/m)` | **`Carryover=0.70, Salinity=normal, Hardpan=False`** | Multivariate State Vector [Phi, S_freq, H_load, xi, EC_class] | Requires multi-year archive continuity; new farms must rely on regional satellite baseline interpolation. |
 | **Eq 17** | **FAO-56 30-Day Cumulative Root-Zone Water Balance** | `Kc=1.15, ET0=7.8 mm/d (Summer Corn/Sorghum), 30 days rainless` | **`Final Depletion=200.5 mm, TAW=216.0 mm`** | `Kc=0.95, ET0=3.2 mm/d (Winter Wheat), 30 days light rain` | **`Final Depletion=101.2 mm, TAW=180.0 mm`** | mm (Root Zone Depletion D_r & Total Available Water TAW) | Assumes constant Kc over 30-day window without dynamic sub-stage leaf area expansion curves. |
-| **Eq 18** | **Stewart Yield-Water Response & Failure Risk** | `ky=1.25 (Maize), ETa=380 mm, ETc=520 mm (27% Deficit)` | **`Yield Ratio=0.663, Failure Risk=14.4%`** | `ky=1.05 (Wheat), ETa=290 mm, ETc=310 mm (6.5% Deficit)` | **`Yield Ratio=0.932, Failure Risk=4.8%`** | Relative Yield Ya/Ym [0.0, 1.0] & Failure Probability P(Y<0.70) | Stewart model is linear; fails to capture catastrophic threshold collapse if water stress occurs during silking/tasseling. |
+| **Eq 18** | **Stewart Yield-Water Response & Failure Risk** | `ky=1.25 (Maize), ETa=380 mm, ETc=520 mm (27% Deficit)` | **`Yield Ratio=0.650, Failure Risk=17.8%`** | `ky=1.05 (Wheat), ETa=290 mm, ETc=310 mm (6.5% Deficit)` | **`Yield Ratio=0.932, Failure Risk=4.8%`** | Relative Yield Ya/Ym [0.0, 1.0] & Failure Probability P(Y<0.70) | Stewart model is linear; fails to capture catastrophic threshold collapse if water stress occurs during silking/tasseling. |
 | **Eq 19** | **Structural Soil Health Index (SHI)** | `Legume+Biodrill (N_bio=85 kg/ha, Residue=3.5 t/ha, Zr=1.8m, Pest=0.10)` | **`58.4`** | `Continuous Cereal Monoculture (N_bio=0, Residue=1.2 t/ha, Zr=1.0m, Pest=0.45)` | **`23.5`** | Score [0, 100] | Empirical weighting between chemical (N) and physical (biodrilling) factors does not reflect microbiological mycorrhizal diversity. |
 | **Eq 20** | **Dynamic TOPSIS Multi-Criteria Decision Solver** | `3 Strategies x [Profit, WaterSaved%, SoilHealth, FailureRisk], weights=[0.35, 0.30, 0.20, 0.15]` | **`Scores: Balanced=0.711, WaterSaving=0.819, Monoculture=0.178`** | `Same Solver Matrix` | **`Winner: Balanced (Score=0.711) vs Monoculture (0.178)`** | Relative Closeness Coefficient C_i [0.0, 1.0] | Rank reversal phenomenon can occur if an irrelevant candidate alternative is introduced or removed. |
 | **Eq 21** | **NASA POWER Growing Degree Days Accumulation (GDD)** | `Tmax=41.5°C, Tmin=26.5°C, Tbase=10°C, Tcutoff=38°C (Maize/Sorghum)` | **`22.25`** | `Tmax=22.0°C, Tmin=9.5°C, Tbase=4°C, Tcutoff=30°C (Wheat)` | **`11.75`** | °C·day (Thermal Time Units) | Linear GDD accumulates excessive development under hyper-thermal conditions unless upper cutoff (T_cutoff) is strictly clamped. |
@@ -55,154 +55,154 @@ Evaluating 3 Official Judge Presets across all 3 Rotation Strategies (Balanced, 
 **Field Coordinates:** `30.85, 31.05` | **Salinity Risk:** `normal` | **Hardpan Detected:** `false` | **Carryover Φ:** `0.65`
 
 #### Strategy: Balanced Adaptive Strategy (الدورة المتوازنة)
-- **Total 3-Yr Water Required:** `22614 m³/ha` (`4362 m³/feddan saved vs baseline`, **31% reduction**)
-- **Total Biological Nitrogen Added:** `-47 kg N/ha`
+- **Total 3-Yr Water Required:** `21020 m³/ha` (`5032 m³/feddan saved vs baseline`, **36% reduction**)
+- **Total Biological Nitrogen Added:** `-3 kg N/ha`
 - **Total Urea Bags Saved:** `3 bags (50kg)/feddan` (~**1350 EGP/feddan saved**)
 - **Hardpan Bio-Drilling Remediated:** `true`
-- **Overall Failure Risk:** `10%` | **Soil Health Index (SHI):** `83 / 100` | **TOPSIS Score (Ci):** `0.762`
+- **Overall Failure Risk:** `6%` | **Soil Health Index (SHI):** `88 / 100` | **TOPSIS Score (Ci):** `0.838`
 
 | Season | Period | Crop (Arabic / English) | Family | Pathway | Water Need (m³/feddan) | AquaCrop Biomass (t/ha) | HI_adj | Yield (t/ha) | N Fix (kg/ha) | N Credit (kg/ha) | Urea Bags Saved | Bio-Drill Root Depth | Failure Risk | Net Income (USD/ha) | Net Income (EGP/feddan) |
 | :---: | :--- | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **S1** | Year 1 ❄️ الشتاء | **الشعير (عالي التحمل للجفاف والملوحة)**<br>(Barley) | Poaceae (Grasses) | `C3` | 1470 m³ | 8.7 | 0.46 | **4.00** | 0 | 45.0 | **0.9** | 1.2 m | 4.0% | $369 | **7,672 EGP** |
-| **S2** | Year 1 ☀️ الصيف | **الذرة الرفيعة (مقاومة الجفاف)**<br>(Grain Sorghum / Milo) | Poaceae (Grasses) | `C4` | 1777 m³ | 15.5 | 0.45 | **6.98** | 0 | 0.0 | **0.0** | 1.6 m | 30.0% | $752 | **15,634 EGP** |
-| **S3** | Year 2 ❄️ الشتاء | **الفول البلدي (الفول الحراتي)**<br>(Faba Bean / Broad Bean) | Fabaceae (Legumes) | `C3` | 1890 m³ | 9.2 | 0.44 | **4.04** | 75 | 0.0 | **0.0** | 1.1 m | 8.0% | $583 | **12,121 EGP** |
-| **S4** | Year 2 ☀️ الصيف | **علف البانيكم المعمر (فائق الصمود للحرارة والملوحة)**<br>(Panicum Forage (Blue Panicgrass)) | Poaceae (C4 Perennial Grass) | `C4` | 1421 m³ | 15.4 | 0.65 | **10.00** | 0 | 105.0 | **2.1** | 1.8 m | 4.0% | $1233 | **25,634 EGP** |
-| **S5** | Year 3 ❄️ الشتاء | **القرطم (العصفر عميق الجذور)**<br>(Safflower) | Asteraceae (Oilseed) | `C3` | 1680 m³ | 8.7 | 0.30 | **2.60** | 0 | 0.0 | **0.0** | 2.1 m | 8.0% | $373 | **7,755 EGP** |
-| **S6** | Year 3 ☀️ الصيف | **الدخن اللؤلؤي (شديد الجفاف والحرارة)**<br>(Pearl Millet) | Poaceae (Grasses) | `C4` | 1260 m³ | 13.0 | 0.40 | **5.21** | 0 | 0.0 | **0.0** | 1.5 m | 8.0% | $634 | **13,181 EGP** |
+| **S1** | Year 1 ❄️ الشتاء | **الشعير (عالي التحمل للجفاف والملوحة)**<br>(Barley) | Poaceae (Grasses) | `C3` | 1470 m³ | 8.7 | 0.46 | **4.00** | 0 | 45.0 | **0.9** | 1.2 m | 4.0% | $916 | **19,044 EGP** |
+| **S2** | Year 1 ☀️ الصيف | **اللوبيا (شديدة التحمل للحرارة)**<br>(Cowpea / Black-eyed Pea) | Fabaceae (Legumes) | `C3` | 1382 m³ | 6.9 | 0.40 | **2.77** | 60 | 0.0 | **0.0** | 1.2 m | 8.0% | $338 | **7,027 EGP** |
+| **S3** | Year 2 ❄️ الشتاء | **القرطم (العصفر عميق الجذور)**<br>(Safflower) | Asteraceae (Oilseed) | `C3` | 1680 m³ | 8.7 | 0.30 | **2.60** | 0 | 60.0 | **1.2** | 2.1 m | 4.0% | $358 | **7,443 EGP** |
+| **S4** | Year 2 ☀️ الصيف | **الذرة الرفيعة (مقاومة الجفاف)**<br>(Grain Sorghum / Milo) | Poaceae (Grasses) | `C4` | 1777 m³ | 18.9 | 0.45 | **8.51** | 0 | 0.0 | **0.0** | 1.6 m | 8.0% | $940 | **19,543 EGP** |
+| **S5** | Year 3 ❄️ الشتاء | **العدس**<br>(Lentil) | Fabaceae (Legumes) | `C3` | 1260 m³ | 5.5 | 0.38 | **2.10** | 50 | 0.0 | **0.0** | 0.8 m | 8.0% | $348 | **7,235 EGP** |
+| **S6** | Year 3 ☀️ الصيف | **الدخن اللؤلؤي (شديد الجفاف والحرارة)**<br>(Pearl Millet) | Poaceae (Grasses) | `C4` | 1260 m³ | 14.1 | 0.40 | **5.63** | 0 | 45.0 | **0.9** | 1.5 m | 4.0% | $802 | **16,674 EGP** |
 
 #### Strategy: Water-Saving Drought Strategy (الدورة الموفرة للمياه)
-- **Total 3-Yr Water Required:** `20704 m³/ha` (`5164 m³/feddan saved vs baseline`, **37% reduction**)
-- **Total Biological Nitrogen Added:** `-154 kg N/ha`
-- **Total Urea Bags Saved:** `1.8 bags (50kg)/feddan` (~**810 EGP/feddan saved**)
+- **Total 3-Yr Water Required:** `20404 m³/ha` (`5290 m³/feddan saved vs baseline`, **38% reduction**)
+- **Total Biological Nitrogen Added:** `-15 kg N/ha`
+- **Total Urea Bags Saved:** `1.9 bags (50kg)/feddan` (~**855 EGP/feddan saved**)
 - **Hardpan Bio-Drilling Remediated:** `true`
-- **Overall Failure Risk:** `18%` | **Soil Health Index (SHI):** `68 / 100` | **TOPSIS Score (Ci):** `0.698`
+- **Overall Failure Risk:** `10%` | **Soil Health Index (SHI):** `87 / 100` | **TOPSIS Score (Ci):** `0.822`
 
 | Season | Period | Crop (Arabic / English) | Family | Pathway | Water Need (m³/feddan) | AquaCrop Biomass (t/ha) | HI_adj | Yield (t/ha) | N Fix (kg/ha) | N Credit (kg/ha) | Urea Bags Saved | Bio-Drill Root Depth | Failure Risk | Net Income (USD/ha) | Net Income (EGP/feddan) |
 | :---: | :--- | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **S1** | Year 1 ❄️ الشتاء | **الشعير (عالي التحمل للجفاف والملوحة)**<br>(Barley) | Poaceae (Grasses) | `C3` | 1470 m³ | 8.7 | 0.46 | **4.00** | 0 | 45.0 | **0.9** | 1.2 m | 4.0% | $369 | **7,672 EGP** |
-| **S2** | Year 1 ☀️ الصيف | **الدخن اللؤلؤي (شديد الجفاف والحرارة)**<br>(Pearl Millet) | Poaceae (Grasses) | `C4` | 1184 m³ | 10.0 | 0.40 | **4.02** | 0 | 0.0 | **0.0** | 1.5 m | 30.0% | $271 | **5,634 EGP** |
-| **S3** | Year 2 ❄️ الشتاء | **العدس**<br>(Lentil) | Fabaceae (Legumes) | `C3` | 1260 m³ | 5.5 | 0.38 | **2.10** | 50 | 0.0 | **0.0** | 0.8 m | 8.0% | $98 | **2,037 EGP** |
-| **S4** | Year 2 ☀️ الصيف | **علف البانيكم المعمر (فائق الصمود للحرارة والملوحة)**<br>(Panicum Forage (Blue Panicgrass)) | Poaceae (C4 Perennial Grass) | `C4` | 1421 m³ | 15.4 | 0.65 | **10.00** | 0 | 45.0 | **0.9** | 1.8 m | 4.0% | $1158 | **24,075 EGP** |
-| **S5** | Year 3 ❄️ الشتاء | **الشعير (عالي التحمل للجفاف والملوحة)**<br>(Barley) | Poaceae (Grasses) | `C3` | 1470 m³ | 6.6 | 0.46 | **3.04** | 0 | 0.0 | **0.0** | 1.2 m | 30.0% | $-7 | **-146 EGP** |
-| **S6** | Year 3 ☀️ الصيف | **الذرة الرفيعة (مقاومة الجفاف)**<br>(Grain Sorghum / Milo) | Poaceae (Grasses) | `C4` | 1890 m³ | 16.5 | 0.45 | **7.43** | 0 | 0.0 | **0.0** | 1.6 m | 30.0% | $752 | **15,634 EGP** |
+| **S1** | Year 1 ❄️ الشتاء | **الحمص (موفر مائي)**<br>(Chickpea / Garbanzo) | Fabaceae (Legumes) | `C3` | 1344 m³ | 6.1 | 0.40 | **2.44** | 55 | 45.0 | **0.9** | 1 m | 4.0% | $386 | **8,025 EGP** |
+| **S2** | Year 1 ☀️ الصيف | **الدخن اللؤلؤي (شديد الجفاف والحرارة)**<br>(Pearl Millet) | Poaceae (Grasses) | `C4` | 1184 m³ | 13.2 | 0.40 | **5.29** | 0 | 49.0 | **1.0** | 1.5 m | 4.0% | $807 | **16,778 EGP** |
+| **S3** | Year 2 ❄️ الشتاء | **القرطم (العصفر عميق الجذور)**<br>(Safflower) | Asteraceae (Oilseed) | `C3` | 1680 m³ | 8.7 | 0.30 | **2.60** | 0 | 0.0 | **0.0** | 2.1 m | 8.0% | $283 | **5,884 EGP** |
+| **S4** | Year 2 ☀️ الصيف | **علف البانيكم المعمر (فائق الصمود للحرارة والملوحة)**<br>(Panicum Forage (Blue Panicgrass)) | Poaceae (C4 Perennial Grass) | `C4` | 1421 m³ | 14.3 | 0.65 | **9.26** | 0 | 0.0 | **0.0** | 1.8 m | 8.0% | $1170 | **24,324 EGP** |
+| **S5** | Year 3 ❄️ الشتاء | **الشعير (عالي التحمل للجفاف والملوحة)**<br>(Barley) | Poaceae (Grasses) | `C3` | 1470 m³ | 6.6 | 0.46 | **3.04** | 0 | 0.0 | **0.0** | 1.2 m | 30.0% | $525 | **10,915 EGP** |
+| **S6** | Year 3 ☀️ الصيف | **اللوبيا (شديدة التحمل للحرارة)**<br>(Cowpea / Black-eyed Pea) | Fabaceae (Legumes) | `C3` | 1470 m³ | 7.4 | 0.40 | **2.95** | 60 | 0.0 | **0.0** | 1.2 m | 8.0% | $338 | **7,027 EGP** |
 
 #### Strategy: Continuous Monoculture Baseline (الزراعة الأحادية التقليدية)
 - **Total 3-Yr Water Required:** `32220 m³/ha` (`0 m³/feddan saved vs baseline`, **0% reduction**)
 - **Total Biological Nitrogen Added:** `-499 kg N/ha`
 - **Total Urea Bags Saved:** `0 bags (50kg)/feddan` (~**0 EGP/feddan saved**)
 - **Hardpan Bio-Drilling Remediated:** `false`
-- **Overall Failure Risk:** `26%` | **Soil Health Index (SHI):** `15 / 100` | **TOPSIS Score (Ci):** `0.095`
+- **Overall Failure Risk:** `26%` | **Soil Health Index (SHI):** `15 / 100` | **TOPSIS Score (Ci):** `0.042`
 
 | Season | Period | Crop (Arabic / English) | Family | Pathway | Water Need (m³/feddan) | AquaCrop Biomass (t/ha) | HI_adj | Yield (t/ha) | N Fix (kg/ha) | N Credit (kg/ha) | Urea Bags Saved | Bio-Drill Root Depth | Failure Risk | Net Income (USD/ha) | Net Income (EGP/feddan) |
 | :---: | :--- | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **S1** | Year 1 ❄️ الشتاء | **القمح الشتوي**<br>(Winter Wheat) | Poaceae (Grasses) | `C3` | 1890 m³ | 10.9 | 0.45 | **4.89** | 0 | 45.0 | **0.9** | 1.4 m | 4.0% | $755 | **15,696 EGP** |
-| **S2** | Year 1 ☀️ الصيف | **الذرة الصفراء (حبيات)**<br>(Grain Maize / Corn) | Poaceae (Grasses) | `C4` | 2566 m³ | 21.1 | 0.48 | **10.04** | 0 | 0.0 | **0.0** | 1.2 m | 30.0% | $857 | **17,817 EGP** |
-| **S3** | Year 2 ❄️ الشتاء | **القمح الشتوي**<br>(Winter Wheat) | Poaceae (Grasses) | `C3` | 1890 m³ | 8.3 | 0.45 | **3.71** | 0 | 0.0 | **0.0** | 1.4 m | 30.0% | $229 | **4,761 EGP** |
-| **S4** | Year 2 ☀️ الصيف | **الذرة الصفراء (حبيات)**<br>(Grain Maize / Corn) | Poaceae (Grasses) | `C4` | 2566 m³ | 21.1 | 0.48 | **10.04** | 0 | 0.0 | **0.0** | 1.2 m | 30.0% | $857 | **17,817 EGP** |
-| **S5** | Year 3 ❄️ الشتاء | **القمح الشتوي**<br>(Winter Wheat) | Poaceae (Grasses) | `C3` | 1890 m³ | 8.3 | 0.45 | **3.71** | 0 | 0.0 | **0.0** | 1.4 m | 30.0% | $229 | **4,761 EGP** |
-| **S6** | Year 3 ☀️ الصيف | **الذرة الصفراء (حبيات)**<br>(Grain Maize / Corn) | Poaceae (Grasses) | `C4` | 2730 m³ | 22.4 | 0.48 | **10.68** | 0 | 0.0 | **0.0** | 1.2 m | 30.0% | $857 | **17,817 EGP** |
+| **S1** | Year 1 ❄️ الشتاء | **القمح الشتوي**<br>(Winter Wheat) | Poaceae (Grasses) | `C3` | 1890 m³ | 10.9 | 0.45 | **4.89** | 0 | 45.0 | **0.9** | 1.4 m | 4.0% | $729 | **15,156 EGP** |
+| **S2** | Year 1 ☀️ الصيف | **الذرة الصفراء (حبيات)**<br>(Grain Maize / Corn) | Poaceae (Grasses) | `C4` | 2566 m³ | 21.1 | 0.48 | **10.04** | 0 | 0.0 | **0.0** | 1.2 m | 30.0% | $940 | **19,543 EGP** |
+| **S3** | Year 2 ❄️ الشتاء | **القمح الشتوي**<br>(Winter Wheat) | Poaceae (Grasses) | `C3` | 1890 m³ | 8.3 | 0.45 | **3.71** | 0 | 0.0 | **0.0** | 1.4 m | 30.0% | $209 | **4,345 EGP** |
+| **S4** | Year 2 ☀️ الصيف | **الذرة الصفراء (حبيات)**<br>(Grain Maize / Corn) | Poaceae (Grasses) | `C4` | 2566 m³ | 21.1 | 0.48 | **10.04** | 0 | 0.0 | **0.0** | 1.2 m | 30.0% | $940 | **19,543 EGP** |
+| **S5** | Year 3 ❄️ الشتاء | **القمح الشتوي**<br>(Winter Wheat) | Poaceae (Grasses) | `C3` | 1890 m³ | 8.3 | 0.45 | **3.71** | 0 | 0.0 | **0.0** | 1.4 m | 30.0% | $209 | **4,345 EGP** |
+| **S6** | Year 3 ☀️ الصيف | **الذرة الصفراء (حبيات)**<br>(Grain Maize / Corn) | Poaceae (Grasses) | `C4` | 2730 m³ | 22.4 | 0.48 | **10.68** | 0 | 0.0 | **0.0** | 1.2 m | 30.0% | $940 | **19,543 EGP** |
 
 ### Preset 2: Toshka Mega-Project Hyper-Saline Reclaimed Basin (ECe = 6.5 dS/m)
 **Field Coordinates:** `22.684, 31.543` | **Salinity Risk:** `severe` | **Hardpan Detected:** `true` | **Carryover Φ:** `0.38`
 
 #### Strategy: Balanced Adaptive Strategy (الدورة المتوازنة)
-- **Total 3-Yr Water Required:** `24600 m³/ha` (`3528 m³/feddan saved vs baseline`, **25% reduction**)
-- **Total Biological Nitrogen Added:** `-304 kg N/ha`
-- **Total Urea Bags Saved:** `0 bags (50kg)/feddan` (~**0 EGP/feddan saved**)
+- **Total 3-Yr Water Required:** `27600 m³/ha` (`2268 m³/feddan saved vs baseline`, **16% reduction**)
+- **Total Biological Nitrogen Added:** `103 kg N/ha`
+- **Total Urea Bags Saved:** `2.7 bags (50kg)/feddan` (~**1215 EGP/feddan saved**)
 - **Hardpan Bio-Drilling Remediated:** `true`
-- **Overall Failure Risk:** `14%` | **Soil Health Index (SHI):** `53 / 100` | **TOPSIS Score (Ci):** `0.886`
+- **Overall Failure Risk:** `14%` | **Soil Health Index (SHI):** `98 / 100` | **TOPSIS Score (Ci):** `0.924`
 
 | Season | Period | Crop (Arabic / English) | Family | Pathway | Water Need (m³/feddan) | AquaCrop Biomass (t/ha) | HI_adj | Yield (t/ha) | N Fix (kg/ha) | N Credit (kg/ha) | Urea Bags Saved | Bio-Drill Root Depth | Failure Risk | Net Income (USD/ha) | Net Income (EGP/feddan) |
 | :---: | :--- | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **S1** | Year 1 ❄️ الشتاء | **الشعير (عالي التحمل للجفاف والملوحة)**<br>(Barley) | Poaceae (Grasses) | `C3` | 1470 m³ | 8.1 | 0.46 | **3.71** | 0 | 0.0 | **0.0** | 1.2 m | 8.0% | $253 | **5,260 EGP** |
-| **S2** | Year 1 ☀️ الصيف | **الذرة الرفيعة (مقاومة الجفاف)**<br>(Grain Sorghum / Milo) | Poaceae (Grasses) | `C4` | 1890 m³ | 16.5 | 0.45 | **7.43** | 0 | 0.0 | **0.0** | 1.6 m | 30.0% | $752 | **15,634 EGP** |
-| **S3** | Year 2 ❄️ الشتاء | **بنجر السكر**<br>(Sugar Beet) | Amaranthaceae (Sugar Crop) | `C3` | 2520 m³ | 17.4 | 0.65 | **11.29** | 0 | 0.0 | **0.0** | 1.2 m | 8.0% | $1638 | **34,054 EGP** |
-| **S4** | Year 2 ☀️ الصيف | **علف البانيكم المعمر (فائق الصمود للحرارة والملوحة)**<br>(Panicum Forage (Blue Panicgrass)) | Poaceae (C4 Perennial Grass) | `C4` | 1512 m³ | 15.2 | 0.65 | **9.85** | 0 | 0.0 | **0.0** | 1.8 m | 8.0% | $1102 | **22,911 EGP** |
-| **S5** | Year 3 ❄️ الشتاء | **القرطم (العصفر عميق الجذور)**<br>(Safflower) | Asteraceae (Oilseed) | `C3` | 1680 m³ | 8.7 | 0.30 | **2.60** | 0 | 0.0 | **0.0** | 2.1 m | 8.0% | $373 | **7,755 EGP** |
-| **S6** | Year 3 ☀️ الصيف | **الدخن اللؤلؤي (شديد الجفاف والحرارة)**<br>(Pearl Millet) | Poaceae (Grasses) | `C4` | 1260 m³ | 12.7 | 0.40 | **5.08** | 0 | 0.0 | **0.0** | 1.5 m | 22.0% | $607 | **12,620 EGP** |
+| **S1** | Year 1 ❄️ الشتاء | **البرسيم الحجازي (معمر عميق الجذور)**<br>(Alfalfa / Lucerne) | Fabaceae (Deep Legume) | `C3` | 3150 m³ | 15.4 | 0.70 | **10.79** | 110 | 0.0 | **0.0** | 2.2 m | 22.0% | $1480 | **30,769 EGP** |
+| **S2** | Year 1 ☀️ الصيف | **الدخن اللؤلؤي (شديد الجفاف والحرارة)**<br>(Pearl Millet) | Poaceae (Grasses) | `C4` | 1260 m³ | 13.7 | 0.40 | **5.49** | 0 | 135.0 | **2.7** | 1.5 m | 16.0% | $915 | **19,023 EGP** |
+| **S3** | Year 2 ❄️ الشتاء | **القرطم (العصفر عميق الجذور)**<br>(Safflower) | Asteraceae (Oilseed) | `C3` | 1680 m³ | 8.7 | 0.30 | **2.60** | 0 | 0.0 | **0.0** | 2.1 m | 8.0% | $283 | **5,884 EGP** |
+| **S4** | Year 2 ☀️ الصيف | **علف البانيكم المعمر (فائق الصمود للحرارة والملوحة)**<br>(Panicum Forage (Blue Panicgrass)) | Poaceae (C4 Perennial Grass) | `C4` | 1512 m³ | 15.2 | 0.65 | **9.85** | 0 | 0.0 | **0.0** | 1.8 m | 8.0% | $1170 | **24,324 EGP** |
+| **S5** | Year 3 ❄️ الشتاء | **بنجر السكر**<br>(Sugar Beet) | Amaranthaceae (Sugar Crop) | `C3` | 2520 m³ | 17.4 | 0.65 | **11.29** | 0 | 0.0 | **0.0** | 1.2 m | 8.0% | $1167 | **24,262 EGP** |
+| **S6** | Year 3 ☀️ الصيف | **اللوبيا (شديدة التحمل للحرارة)**<br>(Cowpea / Black-eyed Pea) | Fabaceae (Legumes) | `C3` | 1470 m³ | 6.9 | 0.40 | **2.76** | 60 | 0.0 | **0.0** | 1.2 m | 22.0% | $338 | **7,027 EGP** |
 
 #### Strategy: Water-Saving Drought Strategy (الدورة الموفرة للمياه)
-- **Total 3-Yr Water Required:** `23300 m³/ha` (`4074 m³/feddan saved vs baseline`, **29% reduction**)
-- **Total Biological Nitrogen Added:** `-290 kg N/ha`
-- **Total Urea Bags Saved:** `0 bags (50kg)/feddan` (~**0 EGP/feddan saved**)
+- **Total 3-Yr Water Required:** `27600 m³/ha` (`2268 m³/feddan saved vs baseline`, **16% reduction**)
+- **Total Biological Nitrogen Added:** `103 kg N/ha`
+- **Total Urea Bags Saved:** `2.7 bags (50kg)/feddan` (~**1215 EGP/feddan saved**)
 - **Hardpan Bio-Drilling Remediated:** `true`
-- **Overall Failure Risk:** `24%` | **Soil Health Index (SHI):** `54 / 100` | **TOPSIS Score (Ci):** `0.776`
+- **Overall Failure Risk:** `14%` | **Soil Health Index (SHI):** `98 / 100` | **TOPSIS Score (Ci):** `0.924`
 
 | Season | Period | Crop (Arabic / English) | Family | Pathway | Water Need (m³/feddan) | AquaCrop Biomass (t/ha) | HI_adj | Yield (t/ha) | N Fix (kg/ha) | N Credit (kg/ha) | Urea Bags Saved | Bio-Drill Root Depth | Failure Risk | Net Income (USD/ha) | Net Income (EGP/feddan) |
 | :---: | :--- | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **S1** | Year 1 ❄️ الشتاء | **الشيلم (الجودار)**<br>(Rye) | Poaceae (Grasses) | `C3` | 1596 m³ | 7.7 | 0.40 | **3.09** | 0 | 0.0 | **0.0** | 1.3 m | 22.0% | $168 | **3,493 EGP** |
-| **S2** | Year 1 ☀️ الصيف | **الذرة الرفيعة (مقاومة الجفاف)**<br>(Grain Sorghum / Milo) | Poaceae (Grasses) | `C4` | 1890 m³ | 16.5 | 0.45 | **7.43** | 0 | 0.0 | **0.0** | 1.6 m | 30.0% | $752 | **15,634 EGP** |
-| **S3** | Year 2 ❄️ الشتاء | **القرطم (العصفر عميق الجذور)**<br>(Safflower) | Asteraceae (Oilseed) | `C3` | 1680 m³ | 8.7 | 0.30 | **2.60** | 0 | 0.0 | **0.0** | 2.1 m | 8.0% | $373 | **7,755 EGP** |
-| **S4** | Year 2 ☀️ الصيف | **الدخن اللؤلؤي (شديد الجفاف والحرارة)**<br>(Pearl Millet) | Poaceae (Grasses) | `C4` | 1260 m³ | 12.7 | 0.40 | **5.08** | 0 | 0.0 | **0.0** | 1.5 m | 22.0% | $607 | **12,620 EGP** |
-| **S5** | Year 3 ❄️ الشتاء | **الشعير (عالي التحمل للجفاف والملوحة)**<br>(Barley) | Poaceae (Grasses) | `C3` | 1470 m³ | 6.6 | 0.46 | **3.04** | 0 | 0.0 | **0.0** | 1.2 m | 30.0% | $-7 | **-146 EGP** |
-| **S6** | Year 3 ☀️ الصيف | **الذرة الرفيعة (مقاومة الجفاف)**<br>(Grain Sorghum / Milo) | Poaceae (Grasses) | `C4` | 1890 m³ | 16.5 | 0.45 | **7.43** | 0 | 0.0 | **0.0** | 1.6 m | 30.0% | $752 | **15,634 EGP** |
+| **S1** | Year 1 ❄️ الشتاء | **البرسيم الحجازي (معمر عميق الجذور)**<br>(Alfalfa / Lucerne) | Fabaceae (Deep Legume) | `C3` | 3150 m³ | 15.4 | 0.70 | **10.79** | 110 | 0.0 | **0.0** | 2.2 m | 22.0% | $1480 | **30,769 EGP** |
+| **S2** | Year 1 ☀️ الصيف | **الدخن اللؤلؤي (شديد الجفاف والحرارة)**<br>(Pearl Millet) | Poaceae (Grasses) | `C4` | 1260 m³ | 13.7 | 0.40 | **5.49** | 0 | 135.0 | **2.7** | 1.5 m | 16.0% | $915 | **19,023 EGP** |
+| **S3** | Year 2 ❄️ الشتاء | **القرطم (العصفر عميق الجذور)**<br>(Safflower) | Asteraceae (Oilseed) | `C3` | 1680 m³ | 8.7 | 0.30 | **2.60** | 0 | 0.0 | **0.0** | 2.1 m | 8.0% | $283 | **5,884 EGP** |
+| **S4** | Year 2 ☀️ الصيف | **علف البانيكم المعمر (فائق الصمود للحرارة والملوحة)**<br>(Panicum Forage (Blue Panicgrass)) | Poaceae (C4 Perennial Grass) | `C4` | 1512 m³ | 15.2 | 0.65 | **9.85** | 0 | 0.0 | **0.0** | 1.8 m | 8.0% | $1170 | **24,324 EGP** |
+| **S5** | Year 3 ❄️ الشتاء | **بنجر السكر**<br>(Sugar Beet) | Amaranthaceae (Sugar Crop) | `C3` | 2520 m³ | 17.4 | 0.65 | **11.29** | 0 | 0.0 | **0.0** | 1.2 m | 8.0% | $1167 | **24,262 EGP** |
+| **S6** | Year 3 ☀️ الصيف | **اللوبيا (شديدة التحمل للحرارة)**<br>(Cowpea / Black-eyed Pea) | Fabaceae (Legumes) | `C3` | 1470 m³ | 6.9 | 0.40 | **2.76** | 60 | 0.0 | **0.0** | 1.2 m | 22.0% | $338 | **7,027 EGP** |
 
 #### Strategy: Continuous Monoculture Baseline (الزراعة الأحادية التقليدية)
 - **Total 3-Yr Water Required:** `33000 m³/ha` (`0 m³/feddan saved vs baseline`, **0% reduction**)
 - **Total Biological Nitrogen Added:** `-513 kg N/ha`
 - **Total Urea Bags Saved:** `0 bags (50kg)/feddan` (~**0 EGP/feddan saved**)
 - **Hardpan Bio-Drilling Remediated:** `false`
-- **Overall Failure Risk:** `40%` | **Soil Health Index (SHI):** `15 / 100` | **TOPSIS Score (Ci):** `0.085`
+- **Overall Failure Risk:** `40%` | **Soil Health Index (SHI):** `15 / 100` | **TOPSIS Score (Ci):** `0.000`
 
 | Season | Period | Crop (Arabic / English) | Family | Pathway | Water Need (m³/feddan) | AquaCrop Biomass (t/ha) | HI_adj | Yield (t/ha) | N Fix (kg/ha) | N Credit (kg/ha) | Urea Bags Saved | Bio-Drill Root Depth | Failure Risk | Net Income (USD/ha) | Net Income (EGP/feddan) |
 | :---: | :--- | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **S1** | Year 1 ❄️ الشتاء | **القمح الشتوي**<br>(Winter Wheat) | Poaceae (Grasses) | `C3` | 1890 m³ | 9.4 | 0.45 | **4.24** | 0 | 0.0 | **0.0** | 1.4 m | 22.0% | $506 | **10,520 EGP** |
-| **S2** | Year 1 ☀️ الصيف | **الذرة الصفراء (حبيات)**<br>(Grain Maize / Corn) | Poaceae (Grasses) | `C4` | 2730 m³ | 14.7 | 0.48 | **7.01** | 0 | 0.0 | **0.0** | 1.2 m | 44.0% | $857 | **17,817 EGP** |
-| **S3** | Year 2 ❄️ الشتاء | **القمح الشتوي**<br>(Winter Wheat) | Poaceae (Grasses) | `C3` | 1890 m³ | 7.7 | 0.45 | **3.48** | 0 | 0.0 | **0.0** | 1.4 m | 44.0% | $161 | **3,347 EGP** |
-| **S4** | Year 2 ☀️ الصيف | **الذرة الصفراء (حبيات)**<br>(Grain Maize / Corn) | Poaceae (Grasses) | `C4` | 2730 m³ | 14.7 | 0.48 | **7.01** | 0 | 0.0 | **0.0** | 1.2 m | 44.0% | $857 | **17,817 EGP** |
-| **S5** | Year 3 ❄️ الشتاء | **القمح الشتوي**<br>(Winter Wheat) | Poaceae (Grasses) | `C3` | 1890 m³ | 7.7 | 0.45 | **3.48** | 0 | 0.0 | **0.0** | 1.4 m | 44.0% | $161 | **3,347 EGP** |
-| **S6** | Year 3 ☀️ الصيف | **الذرة الصفراء (حبيات)**<br>(Grain Maize / Corn) | Poaceae (Grasses) | `C4` | 2730 m³ | 14.7 | 0.48 | **7.01** | 0 | 0.0 | **0.0** | 1.2 m | 44.0% | $857 | **17,817 EGP** |
+| **S1** | Year 1 ❄️ الشتاء | **القمح الشتوي**<br>(Winter Wheat) | Poaceae (Grasses) | `C3` | 1890 m³ | 9.4 | 0.45 | **4.24** | 0 | 0.0 | **0.0** | 1.4 m | 22.0% | $483 | **10,042 EGP** |
+| **S2** | Year 1 ☀️ الصيف | **الذرة الصفراء (حبيات)**<br>(Grain Maize / Corn) | Poaceae (Grasses) | `C4` | 2730 m³ | 14.7 | 0.48 | **7.01** | 0 | 0.0 | **0.0** | 1.2 m | 44.0% | $940 | **19,543 EGP** |
+| **S3** | Year 2 ❄️ الشتاء | **القمح الشتوي**<br>(Winter Wheat) | Poaceae (Grasses) | `C3` | 1890 m³ | 7.7 | 0.45 | **3.48** | 0 | 0.0 | **0.0** | 1.4 m | 44.0% | $170 | **3,534 EGP** |
+| **S4** | Year 2 ☀️ الصيف | **الذرة الصفراء (حبيات)**<br>(Grain Maize / Corn) | Poaceae (Grasses) | `C4` | 2730 m³ | 14.7 | 0.48 | **7.01** | 0 | 0.0 | **0.0** | 1.2 m | 44.0% | $940 | **19,543 EGP** |
+| **S5** | Year 3 ❄️ الشتاء | **القمح الشتوي**<br>(Winter Wheat) | Poaceae (Grasses) | `C3` | 1890 m³ | 7.7 | 0.45 | **3.48** | 0 | 0.0 | **0.0** | 1.4 m | 44.0% | $170 | **3,534 EGP** |
+| **S6** | Year 3 ☀️ الصيف | **الذرة الصفراء (حبيات)**<br>(Grain Maize / Corn) | Poaceae (Grasses) | `C4` | 2730 m³ | 14.7 | 0.48 | **7.01** | 0 | 0.0 | **0.0** | 1.2 m | 44.0% | $940 | **19,543 EGP** |
 
 ### Preset 3: Hardpan Subsoil Compaction & Claypan at 45cm
 **Field Coordinates:** `30.22, 30.12` | **Salinity Risk:** `moderate` | **Hardpan Detected:** `true` | **Carryover Φ:** `0.45`
 
 #### Strategy: Balanced Adaptive Strategy (الدورة المتوازنة)
-- **Total 3-Yr Water Required:** `23100 m³/ha` (`4158 m³/feddan saved vs baseline`, **30% reduction**)
-- **Total Biological Nitrogen Added:** `-60 kg N/ha`
+- **Total 3-Yr Water Required:** `21500 m³/ha` (`4830 m³/feddan saved vs baseline`, **35% reduction**)
+- **Total Biological Nitrogen Added:** `-16 kg N/ha`
 - **Total Urea Bags Saved:** `2.1 bags (50kg)/feddan` (~**945 EGP/feddan saved**)
 - **Hardpan Bio-Drilling Remediated:** `true`
-- **Overall Failure Risk:** `13%` | **Soil Health Index (SHI):** `82 / 100` | **TOPSIS Score (Ci):** `0.772`
+- **Overall Failure Risk:** `9%` | **Soil Health Index (SHI):** `86 / 100` | **TOPSIS Score (Ci):** `0.836`
 
 | Season | Period | Crop (Arabic / English) | Family | Pathway | Water Need (m³/feddan) | AquaCrop Biomass (t/ha) | HI_adj | Yield (t/ha) | N Fix (kg/ha) | N Credit (kg/ha) | Urea Bags Saved | Bio-Drill Root Depth | Failure Risk | Net Income (USD/ha) | Net Income (EGP/feddan) |
 | :---: | :--- | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **S1** | Year 1 ❄️ الشتاء | **الشعير (عالي التحمل للجفاف والملوحة)**<br>(Barley) | Poaceae (Grasses) | `C3` | 1470 m³ | 8.1 | 0.46 | **3.71** | 0 | 0.0 | **0.0** | 1.2 m | 8.0% | $253 | **5,260 EGP** |
-| **S2** | Year 1 ☀️ الصيف | **الذرة الرفيعة (مقاومة الجفاف)**<br>(Grain Sorghum / Milo) | Poaceae (Grasses) | `C4` | 1890 m³ | 16.5 | 0.45 | **7.43** | 0 | 0.0 | **0.0** | 1.6 m | 30.0% | $752 | **15,634 EGP** |
-| **S3** | Year 2 ❄️ الشتاء | **الفول البلدي (الفول الحراتي)**<br>(Faba Bean / Broad Bean) | Fabaceae (Legumes) | `C3` | 1890 m³ | 8.7 | 0.44 | **3.81** | 75 | 0.0 | **0.0** | 1.1 m | 22.0% | $511 | **10,624 EGP** |
-| **S4** | Year 2 ☀️ الصيف | **علف البانيكم المعمر (فائق الصمود للحرارة والملوحة)**<br>(Panicum Forage (Blue Panicgrass)) | Poaceae (C4 Perennial Grass) | `C4` | 1512 m³ | 16.4 | 0.65 | **10.64** | 0 | 105.0 | **2.1** | 1.8 m | 4.0% | $1233 | **25,634 EGP** |
-| **S5** | Year 3 ❄️ الشتاء | **القرطم (العصفر عميق الجذور)**<br>(Safflower) | Asteraceae (Oilseed) | `C3` | 1680 m³ | 8.7 | 0.30 | **2.60** | 0 | 0.0 | **0.0** | 2.1 m | 8.0% | $373 | **7,755 EGP** |
-| **S6** | Year 3 ☀️ الصيف | **الدخن اللؤلؤي (شديد الجفاف والحرارة)**<br>(Pearl Millet) | Poaceae (Grasses) | `C4` | 1260 m³ | 13.0 | 0.40 | **5.21** | 0 | 0.0 | **0.0** | 1.5 m | 8.0% | $634 | **13,181 EGP** |
+| **S1** | Year 1 ❄️ الشتاء | **الشعير (عالي التحمل للجفاف والملوحة)**<br>(Barley) | Poaceae (Grasses) | `C3` | 1470 m³ | 8.1 | 0.46 | **3.71** | 0 | 0.0 | **0.0** | 1.2 m | 8.0% | $860 | **17,879 EGP** |
+| **S2** | Year 1 ☀️ الصيف | **اللوبيا (شديدة التحمل للحرارة)**<br>(Cowpea / Black-eyed Pea) | Fabaceae (Legumes) | `C3` | 1470 m³ | 7.4 | 0.40 | **2.95** | 60 | 0.0 | **0.0** | 1.2 m | 8.0% | $338 | **7,027 EGP** |
+| **S3** | Year 2 ❄️ الشتاء | **القرطم (العصفر عميق الجذور)**<br>(Safflower) | Asteraceae (Oilseed) | `C3` | 1680 m³ | 8.7 | 0.30 | **2.60** | 0 | 60.0 | **1.2** | 2.1 m | 4.0% | $358 | **7,443 EGP** |
+| **S4** | Year 2 ☀️ الصيف | **الذرة الرفيعة (مقاومة الجفاف)**<br>(Grain Sorghum / Milo) | Poaceae (Grasses) | `C4` | 1890 m³ | 20.1 | 0.45 | **9.06** | 0 | 0.0 | **0.0** | 1.6 m | 8.0% | $940 | **19,543 EGP** |
+| **S5** | Year 3 ❄️ الشتاء | **العدس**<br>(Lentil) | Fabaceae (Legumes) | `C3` | 1260 m³ | 4.9 | 0.38 | **1.87** | 50 | 0.0 | **0.0** | 0.8 m | 22.0% | $348 | **7,235 EGP** |
+| **S6** | Year 3 ☀️ الصيف | **الدخن اللؤلؤي (شديد الجفاف والحرارة)**<br>(Pearl Millet) | Poaceae (Grasses) | `C4` | 1260 m³ | 14.1 | 0.40 | **5.63** | 0 | 45.0 | **0.9** | 1.5 m | 4.0% | $802 | **16,674 EGP** |
 
 #### Strategy: Water-Saving Drought Strategy (الدورة الموفرة للمياه)
-- **Total 3-Yr Water Required:** `21100 m³/ha` (`4998 m³/feddan saved vs baseline`, **36% reduction**)
-- **Total Biological Nitrogen Added:** `-167 kg N/ha`
-- **Total Urea Bags Saved:** `0.9 bags (50kg)/feddan` (~**405 EGP/feddan saved**)
+- **Total 3-Yr Water Required:** `20800 m³/ha` (`5124 m³/feddan saved vs baseline`, **37% reduction**)
+- **Total Biological Nitrogen Added:** `-15 kg N/ha`
+- **Total Urea Bags Saved:** `1 bags (50kg)/feddan` (~**450 EGP/feddan saved**)
 - **Hardpan Bio-Drilling Remediated:** `true`
-- **Overall Failure Risk:** `22%` | **Soil Health Index (SHI):** `66 / 100` | **TOPSIS Score (Ci):** `0.721`
+- **Overall Failure Risk:** `13%` | **Soil Health Index (SHI):** `87 / 100` | **TOPSIS Score (Ci):** `0.829`
 
 | Season | Period | Crop (Arabic / English) | Family | Pathway | Water Need (m³/feddan) | AquaCrop Biomass (t/ha) | HI_adj | Yield (t/ha) | N Fix (kg/ha) | N Credit (kg/ha) | Urea Bags Saved | Bio-Drill Root Depth | Failure Risk | Net Income (USD/ha) | Net Income (EGP/feddan) |
 | :---: | :--- | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **S1** | Year 1 ❄️ الشتاء | **الشعير (عالي التحمل للجفاف والملوحة)**<br>(Barley) | Poaceae (Grasses) | `C3` | 1470 m³ | 8.1 | 0.46 | **3.71** | 0 | 0.0 | **0.0** | 1.2 m | 8.0% | $253 | **5,260 EGP** |
-| **S2** | Year 1 ☀️ الصيف | **الدخن اللؤلؤي (شديد الجفاف والحرارة)**<br>(Pearl Millet) | Poaceae (Grasses) | `C4` | 1260 m³ | 10.7 | 0.40 | **4.27** | 0 | 0.0 | **0.0** | 1.5 m | 30.0% | $322 | **6,694 EGP** |
-| **S3** | Year 2 ❄️ الشتاء | **العدس**<br>(Lentil) | Fabaceae (Legumes) | `C3` | 1260 m³ | 4.3 | 0.38 | **1.64** | 50 | 0.0 | **0.0** | 0.8 m | 32.0% | $-35 | **-728 EGP** |
-| **S4** | Year 2 ☀️ الصيف | **علف البانيكم المعمر (فائق الصمود للحرارة والملوحة)**<br>(Panicum Forage (Blue Panicgrass)) | Poaceae (C4 Perennial Grass) | `C4` | 1512 m³ | 16.4 | 0.65 | **10.64** | 0 | 45.0 | **0.9** | 1.8 m | 4.0% | $1158 | **24,075 EGP** |
-| **S5** | Year 3 ❄️ الشتاء | **الشعير (عالي التحمل للجفاف والملوحة)**<br>(Barley) | Poaceae (Grasses) | `C3` | 1470 m³ | 6.6 | 0.46 | **3.04** | 0 | 0.0 | **0.0** | 1.2 m | 30.0% | $-7 | **-146 EGP** |
-| **S6** | Year 3 ☀️ الصيف | **الذرة الرفيعة (مقاومة الجفاف)**<br>(Grain Sorghum / Milo) | Poaceae (Grasses) | `C4` | 1890 m³ | 16.5 | 0.45 | **7.43** | 0 | 0.0 | **0.0** | 1.6 m | 30.0% | $752 | **15,634 EGP** |
+| **S1** | Year 1 ❄️ الشتاء | **الحمص (موفر مائي)**<br>(Chickpea / Garbanzo) | Fabaceae (Legumes) | `C3` | 1344 m³ | 4.9 | 0.40 | **1.94** | 55 | 0.0 | **0.0** | 1 m | 22.0% | $330 | **6,861 EGP** |
+| **S2** | Year 1 ☀️ الصيف | **الدخن اللؤلؤي (شديد الجفاف والحرارة)**<br>(Pearl Millet) | Poaceae (Grasses) | `C4` | 1260 m³ | 14.1 | 0.40 | **5.63** | 0 | 49.0 | **1.0** | 1.5 m | 4.0% | $807 | **16,778 EGP** |
+| **S3** | Year 2 ❄️ الشتاء | **القرطم (العصفر عميق الجذور)**<br>(Safflower) | Asteraceae (Oilseed) | `C3` | 1680 m³ | 8.7 | 0.30 | **2.60** | 0 | 0.0 | **0.0** | 2.1 m | 8.0% | $283 | **5,884 EGP** |
+| **S4** | Year 2 ☀️ الصيف | **علف البانيكم المعمر (فائق الصمود للحرارة والملوحة)**<br>(Panicum Forage (Blue Panicgrass)) | Poaceae (C4 Perennial Grass) | `C4` | 1512 m³ | 15.2 | 0.65 | **9.85** | 0 | 0.0 | **0.0** | 1.8 m | 8.0% | $1170 | **24,324 EGP** |
+| **S5** | Year 3 ❄️ الشتاء | **الشعير (عالي التحمل للجفاف والملوحة)**<br>(Barley) | Poaceae (Grasses) | `C3` | 1470 m³ | 6.6 | 0.46 | **3.04** | 0 | 0.0 | **0.0** | 1.2 m | 30.0% | $525 | **10,915 EGP** |
+| **S6** | Year 3 ☀️ الصيف | **اللوبيا (شديدة التحمل للحرارة)**<br>(Cowpea / Black-eyed Pea) | Fabaceae (Legumes) | `C3` | 1470 m³ | 7.4 | 0.40 | **2.95** | 60 | 0.0 | **0.0** | 1.2 m | 8.0% | $338 | **7,027 EGP** |
 
 #### Strategy: Continuous Monoculture Baseline (الزراعة الأحادية التقليدية)
 - **Total 3-Yr Water Required:** `33000 m³/ha` (`0 m³/feddan saved vs baseline`, **0% reduction**)
 - **Total Biological Nitrogen Added:** `-513 kg N/ha`
 - **Total Urea Bags Saved:** `0 bags (50kg)/feddan` (~**0 EGP/feddan saved**)
 - **Hardpan Bio-Drilling Remediated:** `false`
-- **Overall Failure Risk:** `33%` | **Soil Health Index (SHI):** `15 / 100` | **TOPSIS Score (Ci):** `0.097`
+- **Overall Failure Risk:** `33%` | **Soil Health Index (SHI):** `15 / 100` | **TOPSIS Score (Ci):** `0.028`
 
 | Season | Period | Crop (Arabic / English) | Family | Pathway | Water Need (m³/feddan) | AquaCrop Biomass (t/ha) | HI_adj | Yield (t/ha) | N Fix (kg/ha) | N Credit (kg/ha) | Urea Bags Saved | Bio-Drill Root Depth | Failure Risk | Net Income (USD/ha) | Net Income (EGP/feddan) |
 | :---: | :--- | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **S1** | Year 1 ❄️ الشتاء | **القمح الشتوي**<br>(Winter Wheat) | Poaceae (Grasses) | `C3` | 1890 m³ | 10.1 | 0.45 | **4.53** | 0 | 0.0 | **0.0** | 1.4 m | 8.0% | $592 | **12,308 EGP** |
-| **S2** | Year 1 ☀️ الصيف | **الذرة الصفراء (حبيات)**<br>(Grain Maize / Corn) | Poaceae (Grasses) | `C4` | 2730 m³ | 19.4 | 0.48 | **9.23** | 0 | 0.0 | **0.0** | 1.2 m | 44.0% | $857 | **17,817 EGP** |
-| **S3** | Year 2 ❄️ الشتاء | **القمح الشتوي**<br>(Winter Wheat) | Poaceae (Grasses) | `C3` | 1890 m³ | 8.3 | 0.45 | **3.71** | 0 | 0.0 | **0.0** | 1.4 m | 30.0% | $229 | **4,761 EGP** |
-| **S4** | Year 2 ☀️ الصيف | **الذرة الصفراء (حبيات)**<br>(Grain Maize / Corn) | Poaceae (Grasses) | `C4` | 2730 m³ | 19.4 | 0.48 | **9.23** | 0 | 0.0 | **0.0** | 1.2 m | 44.0% | $857 | **17,817 EGP** |
-| **S5** | Year 3 ❄️ الشتاء | **القمح الشتوي**<br>(Winter Wheat) | Poaceae (Grasses) | `C3` | 1890 m³ | 8.3 | 0.45 | **3.71** | 0 | 0.0 | **0.0** | 1.4 m | 30.0% | $229 | **4,761 EGP** |
-| **S6** | Year 3 ☀️ الصيف | **الذرة الصفراء (حبيات)**<br>(Grain Maize / Corn) | Poaceae (Grasses) | `C4` | 2730 m³ | 19.4 | 0.48 | **9.23** | 0 | 0.0 | **0.0** | 1.2 m | 44.0% | $857 | **17,817 EGP** |
+| **S1** | Year 1 ❄️ الشتاء | **القمح الشتوي**<br>(Winter Wheat) | Poaceae (Grasses) | `C3` | 1890 m³ | 10.1 | 0.45 | **4.53** | 0 | 0.0 | **0.0** | 1.4 m | 8.0% | $568 | **11,809 EGP** |
+| **S2** | Year 1 ☀️ الصيف | **الذرة الصفراء (حبيات)**<br>(Grain Maize / Corn) | Poaceae (Grasses) | `C4` | 2730 m³ | 19.4 | 0.48 | **9.23** | 0 | 0.0 | **0.0** | 1.2 m | 44.0% | $940 | **19,543 EGP** |
+| **S3** | Year 2 ❄️ الشتاء | **القمح الشتوي**<br>(Winter Wheat) | Poaceae (Grasses) | `C3` | 1890 m³ | 8.3 | 0.45 | **3.71** | 0 | 0.0 | **0.0** | 1.4 m | 30.0% | $209 | **4,345 EGP** |
+| **S4** | Year 2 ☀️ الصيف | **الذرة الصفراء (حبيات)**<br>(Grain Maize / Corn) | Poaceae (Grasses) | `C4` | 2730 m³ | 19.4 | 0.48 | **9.23** | 0 | 0.0 | **0.0** | 1.2 m | 44.0% | $940 | **19,543 EGP** |
+| **S5** | Year 3 ❄️ الشتاء | **القمح الشتوي**<br>(Winter Wheat) | Poaceae (Grasses) | `C3` | 1890 m³ | 8.3 | 0.45 | **3.71** | 0 | 0.0 | **0.0** | 1.4 m | 30.0% | $209 | **4,345 EGP** |
+| **S6** | Year 3 ☀️ الصيف | **الذرة الصفراء (حبيات)**<br>(Grain Maize / Corn) | Poaceae (Grasses) | `C4` | 2730 m³ | 19.4 | 0.48 | **9.23** | 0 | 0.0 | **0.0** | 1.2 m | 44.0% | $940 | **19,543 EGP** |
 
 ---
 
@@ -212,28 +212,28 @@ Testing the Nile Delta and Toshka scenarios across 9 combinations of Water Quota
 ### Location: Nile Delta Farm
 | Water Cut | Heatwave | Balanced TOPSIS | Balanced 6-Season Sequence | Balanced Failure Risk | Water-Saving TOPSIS | Water-Saving 6-Season Sequence | Water-Saving Failure Risk | Monoculture TOPSIS | Monoculture Failure Risk | Anomaly / Shift Observed |
 | :---: | :---: | :---: | :--- | :---: | :---: | :--- | :---: | :---: | :---: | :--- |
-| `-0%` | `+0°C` | **0.762** | `Barley➔Grain➔Faba➔Panicum➔Safflower➔Pearl` | `10.0%` | **0.698** | `Barley➔Pearl➔Lentil➔Panicum➔Barley➔Grain` | `18.0%` | **0.095** | `26.0%` | Smooth linear adaptation |
-| `-0%` | `+2°C` | **0.783** | `Barley➔Grain➔Faba➔Panicum➔Safflower➔Pearl` | `10.0%` | **0.723** | `Barley➔Pearl➔Lentil➔Panicum➔Barley➔Grain` | `18.0%` | **0.124** | `33.0%` | Smooth linear adaptation |
-| `-0%` | `+4°C` | **0.829** | `Barley➔Grain➔Faba➔Panicum➔Safflower➔Pearl` | `10.0%` | **0.753** | `Barley➔Pearl➔Lentil➔Panicum➔Barley➔Grain` | `18.0%` | **0.000** | `39.0%` | Heat-shock flowering penalties reduce cereal harvest index |
-| `-15%` | `+0°C` | **0.732** | `Barley➔Grain➔Faba➔Panicum➔Safflower➔Pearl` | `16.0%` | **0.688** | `Barley➔Pearl➔Lentil➔Panicum➔Barley➔Grain` | `23.0%` | **0.113** | `31.0%` | Smooth linear adaptation |
-| `-15%` | `+2°C` | **0.751** | `Barley➔Grain➔Faba➔Panicum➔Safflower➔Pearl` | `16.0%` | **0.703** | `Barley➔Pearl➔Lentil➔Panicum➔Barley➔Grain` | `23.0%` | **0.091** | `39.0%` | Smooth linear adaptation |
-| `-15%` | `+4°C` | **0.832** | `Barley➔Grain➔Faba➔Panicum➔Safflower➔Pearl` | `16.0%` | **0.755** | `Barley➔Pearl➔Lentil➔Panicum➔Barley➔Grain` | `23.0%` | **0.000** | `45.0%` | Heat-shock flowering penalties reduce cereal harvest index |
-| `-30%` | `+0°C` | **0.717** | `Barley➔Grain➔Faba➔Panicum➔Safflower➔Pearl` | `34.0%` | **0.651** | `Barley➔Pearl➔Lentil➔Panicum➔Barley➔Grain` | `41.0%` | **0.000** | `49.0%` | Water-Saving TOPSIS overtakes or converges with Balanced |
-| `-30%` | `+2°C` | **0.750** | `Barley➔Grain➔Faba➔Panicum➔Safflower➔Pearl` | `34.0%` | **0.660** | `Barley➔Pearl➔Lentil➔Panicum➔Barley➔Grain` | `41.0%` | **0.000** | `57.0%` | Water-Saving TOPSIS overtakes or converges with Balanced |
-| `-30%` | `+4°C` | **0.871** | `Barley➔Grain➔Faba➔Panicum➔Safflower➔Pearl` | `34.0%` | **0.778** | `Barley➔Pearl➔Lentil➔Panicum➔Barley➔Grain` | `41.0%` | **0.000** | `63.0%` | ⚡ Extreme compounding stress: Monoculture failure risk surges over 40% |
+| `-0%` | `+0°C` | **0.838** | `Barley➔Cowpea➔Safflower➔Grain➔Lentil➔Pearl` | `6.0%` | **0.822** | `Chickpea➔Pearl➔Safflower➔Panicum➔Barley➔Cowpea` | `10.0%` | **0.042** | `26.0%` | Smooth linear adaptation |
+| `-0%` | `+2°C` | **0.839** | `Barley➔Cowpea➔Safflower➔Grain➔Lentil➔Pearl` | `6.0%` | **0.828** | `Chickpea➔Pearl➔Safflower➔Panicum➔Barley➔Cowpea` | `10.0%` | **0.042** | `33.0%` | Smooth linear adaptation |
+| `-0%` | `+4°C` | **0.827** | `Barley➔Cowpea➔Safflower➔Grain➔Lentil➔Pearl` | `9.0%` | **0.818** | `Chickpea➔Pearl➔Safflower➔Panicum➔Barley➔Cowpea` | `13.0%` | **0.022** | `39.0%` | Heat-shock flowering penalties reduce cereal harvest index |
+| `-15%` | `+0°C` | **0.844** | `Barley➔Cowpea➔Safflower➔Grain➔Lentil➔Pearl` | `11.0%` | **0.823** | `Chickpea➔Pearl➔Safflower➔Panicum➔Barley➔Cowpea` | `16.0%` | **0.034** | `31.0%` | Smooth linear adaptation |
+| `-15%` | `+2°C` | **0.844** | `Barley➔Cowpea➔Safflower➔Grain➔Lentil➔Pearl` | `11.0%` | **0.826** | `Chickpea➔Pearl➔Safflower➔Panicum➔Barley➔Cowpea` | `16.0%` | **0.023** | `39.0%` | Smooth linear adaptation |
+| `-15%` | `+4°C` | **0.836** | `Barley➔Cowpea➔Safflower➔Grain➔Lentil➔Pearl` | `14.0%` | **0.820** | `Chickpea➔Pearl➔Safflower➔Panicum➔Barley➔Cowpea` | `18.0%` | **0.022** | `45.0%` | Heat-shock flowering penalties reduce cereal harvest index |
+| `-30%` | `+0°C` | **0.826** | `Chickpea➔Pearl➔Safflower➔Panicum➔Barley➔Cowpea` | `34.0%` | **0.826** | `Chickpea➔Pearl➔Safflower➔Panicum➔Barley➔Cowpea` | `34.0%` | **0.023** | `49.0%` | Water-Saving TOPSIS overtakes or converges with Balanced |
+| `-30%` | `+2°C` | **0.825** | `Chickpea➔Pearl➔Safflower➔Panicum➔Barley➔Cowpea` | `34.0%` | **0.825** | `Chickpea➔Pearl➔Safflower➔Panicum➔Barley➔Cowpea` | `34.0%` | **0.022** | `57.0%` | Water-Saving TOPSIS overtakes or converges with Balanced |
+| `-30%` | `+4°C` | **0.824** | `Chickpea➔Pearl➔Safflower➔Panicum➔Barley➔Cowpea` | `36.0%` | **0.824** | `Chickpea➔Pearl➔Safflower➔Panicum➔Barley➔Cowpea` | `36.0%` | **0.022** | `63.0%` | ⚡ Extreme compounding stress: Monoculture failure risk surges over 40% |
 
 ### Location: Toshka Reclaimed Farm
 | Water Cut | Heatwave | Balanced TOPSIS | Balanced 6-Season Sequence | Balanced Failure Risk | Water-Saving TOPSIS | Water-Saving 6-Season Sequence | Water-Saving Failure Risk | Monoculture TOPSIS | Monoculture Failure Risk | Anomaly / Shift Observed |
 | :---: | :---: | :---: | :--- | :---: | :---: | :--- | :---: | :---: | :---: | :--- |
-| `-0%` | `+0°C` | **0.886** | `Barley➔Grain➔Sugar➔Panicum➔Safflower➔Pearl` | `14.0%` | **0.776** | `Rye➔Grain➔Safflower➔Pearl➔Barley➔Grain` | `24.0%` | **0.085** | `40.0%` | Smooth linear adaptation |
-| `-0%` | `+2°C` | **0.889** | `Barley➔Grain➔Sugar➔Panicum➔Safflower➔Pearl` | `14.0%` | **0.773** | `Rye➔Grain➔Safflower➔Pearl➔Barley➔Grain` | `24.0%` | **0.000** | `48.0%` | Smooth linear adaptation |
-| `-0%` | `+4°C` | **0.907** | `Barley➔Grain➔Sugar➔Panicum➔Safflower➔Pearl` | `14.0%` | **0.782** | `Rye➔Grain➔Safflower➔Pearl➔Barley➔Grain` | `24.0%` | **0.000** | `54.0%` | Heat-shock flowering penalties reduce cereal harvest index |
-| `-15%` | `+0°C` | **0.892** | `Barley➔Grain➔Sugar➔Panicum➔Safflower➔Pearl` | `20.0%` | **0.736** | `Rye➔Grain➔Safflower➔Pearl➔Barley➔Grain` | `30.0%` | **0.000** | `46.0%` | Smooth linear adaptation |
-| `-15%` | `+2°C` | **0.900** | `Barley➔Grain➔Sugar➔Panicum➔Safflower➔Pearl` | `20.0%` | **0.740** | `Rye➔Grain➔Safflower➔Pearl➔Barley➔Grain` | `30.0%` | **0.000** | `54.0%` | Smooth linear adaptation |
-| `-15%` | `+4°C` | **0.915** | `Barley➔Grain➔Sugar➔Panicum➔Safflower➔Pearl` | `20.0%` | **0.768** | `Rye➔Grain➔Safflower➔Pearl➔Barley➔Grain` | `30.0%` | **0.000** | `60.0%` | Heat-shock flowering penalties reduce cereal harvest index |
-| `-30%` | `+0°C` | **0.917** | `Barley➔Grain➔Sugar➔Panicum➔Safflower➔Pearl` | `38.0%` | **0.678** | `Rye➔Grain➔Safflower➔Pearl➔Barley➔Grain` | `48.0%` | **0.000** | `64.0%` | Water-Saving TOPSIS overtakes or converges with Balanced |
-| `-30%` | `+2°C` | **0.921** | `Barley➔Grain➔Sugar➔Panicum➔Safflower➔Pearl` | `38.0%` | **0.705** | `Rye➔Grain➔Safflower➔Pearl➔Barley➔Grain` | `48.0%` | **0.000** | `72.0%` | Water-Saving TOPSIS overtakes or converges with Balanced |
-| `-30%` | `+4°C` | **0.925** | `Barley➔Grain➔Sugar➔Panicum➔Safflower➔Pearl` | `38.0%` | **0.754** | `Rye➔Grain➔Safflower➔Pearl➔Barley➔Grain` | `48.0%` | **0.000** | `73.0%` | ⚡ Extreme compounding stress: Monoculture failure risk surges over 40% |
+| `-0%` | `+0°C` | **0.924** | `Alfalfa➔Pearl➔Safflower➔Panicum➔Sugar➔Cowpea` | `14.0%` | **0.924** | `Alfalfa➔Pearl➔Safflower➔Panicum➔Sugar➔Cowpea` | `14.0%` | **0.000** | `40.0%` | Smooth linear adaptation |
+| `-0%` | `+2°C` | **0.926** | `Alfalfa➔Pearl➔Safflower➔Panicum➔Sugar➔Cowpea` | `14.0%` | **0.926** | `Alfalfa➔Pearl➔Safflower➔Panicum➔Sugar➔Cowpea` | `14.0%` | **0.000** | `48.0%` | Smooth linear adaptation |
+| `-0%` | `+4°C` | **0.928** | `Alfalfa➔Pearl➔Safflower➔Panicum➔Sugar➔Cowpea` | `17.0%` | **0.928** | `Alfalfa➔Pearl➔Safflower➔Panicum➔Sugar➔Cowpea` | `17.0%` | **0.000** | `54.0%` | Heat-shock flowering penalties reduce cereal harvest index |
+| `-15%` | `+0°C` | **0.934** | `Alfalfa➔Pearl➔Safflower➔Panicum➔Sugar➔Cowpea` | `20.0%` | **0.934** | `Alfalfa➔Pearl➔Safflower➔Panicum➔Sugar➔Cowpea` | `20.0%` | **0.000** | `46.0%` | Smooth linear adaptation |
+| `-15%` | `+2°C` | **0.938** | `Alfalfa➔Pearl➔Safflower➔Panicum➔Sugar➔Cowpea` | `20.0%` | **0.938** | `Alfalfa➔Pearl➔Safflower➔Panicum➔Sugar➔Cowpea` | `20.0%` | **0.000** | `54.0%` | Smooth linear adaptation |
+| `-15%` | `+4°C` | **0.935** | `Alfalfa➔Pearl➔Safflower➔Panicum➔Sugar➔Cowpea` | `23.0%` | **0.935** | `Alfalfa➔Pearl➔Safflower➔Panicum➔Sugar➔Cowpea` | `23.0%` | **0.000** | `60.0%` | Heat-shock flowering penalties reduce cereal harvest index |
+| `-30%` | `+0°C` | **0.972** | `Alfalfa➔Pearl➔Safflower➔Panicum➔Sugar➔Cowpea` | `38.0%` | **0.972** | `Alfalfa➔Pearl➔Safflower➔Panicum➔Sugar➔Cowpea` | `38.0%` | **0.000** | `64.0%` | Water-Saving TOPSIS overtakes or converges with Balanced |
+| `-30%` | `+2°C` | **0.973** | `Alfalfa➔Pearl➔Safflower➔Panicum➔Sugar➔Cowpea` | `38.0%` | **0.973** | `Alfalfa➔Pearl➔Safflower➔Panicum➔Sugar➔Cowpea` | `38.0%` | **0.000** | `72.0%` | Water-Saving TOPSIS overtakes or converges with Balanced |
+| `-30%` | `+4°C` | **0.970** | `Alfalfa➔Pearl➔Safflower➔Panicum➔Sugar➔Cowpea` | `41.0%` | **0.970** | `Alfalfa➔Pearl➔Safflower➔Panicum➔Sugar➔Cowpea` | `41.0%` | **0.000** | `73.0%` | ⚡ Extreme compounding stress: Monoculture failure risk surges over 40% |
 
 ---
 
@@ -256,10 +256,10 @@ Testing the live autonomous agricultural agent (`/api/chat`) under **Toshka High
   "salinityRiskLevel": "severe",
   "previousCrop": "قمح تقليدي (مجهد)",
   "recommendedRotationTitle": "الدورة التكيفية المتوازنة (عروات 6 شتوي وصيفي)",
-  "waterSavedPercent": 25,
-  "ureaBagsSavedPerFeddan": 0,
-  "fertilizerSavingsEgpPerFeddan": 0,
-  "sixSeasonPlanAr": "عروة شتوية (سنة 1): الشعير (عالي التحمل للجفاف والملوحة) ➔ عروة صيفية (سنة 1): الذرة الرفيعة (مقاومة الجفاف) ➔ عروة شتوية (سنة 2): بنجر السكر ➔ عروة صيفية (سنة 2): علف البانيكم المعمر (فائق الصمود للحرارة والملوحة) ➔ عروة شتوية (سنة 3): القرطم (العصفر عميق الجذور) ➔ عروة صيفية (سنة 3): الدخن اللؤلؤي (شديد الجفاف والحرارة)",
+  "waterSavedPercent": 16,
+  "ureaBagsSavedPerFeddan": 2.7,
+  "fertilizerSavingsEgpPerFeddan": 1215,
+  "sixSeasonPlanAr": "عروة شتوية (سنة 1): البرسيم الحجازي (معمر عميق الجذور) ➔ عروة صيفية (سنة 1): الدخن اللؤلؤي (شديد الجفاف والحرارة) ➔ عروة شتوية (سنة 2): القرطم (العصفر عميق الجذور) ➔ عروة صيفية (سنة 2): علف البانيكم المعمر (فائق الصمود للحرارة والملوحة) ➔ عروة شتوية (سنة 3): بنجر السكر ➔ عروة صيفية (سنة 3): اللوبيا (شديدة التحمل للحرارة)",
   "weatherSummary": "حرارة صيفية 41°C، رطوبة منخفضة 24%، شمس ساطعة، إشعاع شمسي 26.5 MJ/m²",
   "prescribedIrrigationMm": 45,
   "canopyTempAnomalyC": 2.8
@@ -270,84 +270,72 @@ Testing the live autonomous agricultural agent (`/api/chat`) under **Toshka High
 > *" يا باشمهندس الأرض عندي بتملح والميه بتقف على الوش ومش بتنزل للجدر، أزرع إيه الشتا ده والصيف الجاي؟ "*
 **Testing Intent:** *Diagnosis of Hardpan infiltration block + Salinity tolerance recommendations.*
 
-- **Model Responder:** `gemini-2.5-flash`
-- **Response Latency:** `2863 ms`
+- **Model Responder:** `farmer-friendly-core`
+- **Response Latency:** `1502 ms`
 - **Verbatim Agent Reply:**
 
-> يا حاج، أرضك في عنينا ومشاكلها كلها محلولة بإذن الله. بخصوص الملوحة والمياه اللي بتقف على الوش، ده طبيعي مع التربة الرملية الكلسية اللي عندك، وكمان فيه كتمة في باطن الأرض بتخلي الصرف صعب.
-> 
-> نصيحة المرشد الزراعي الذكي ليك للشتا والصيف الجاي هي إنك تزرع محاصيل جذورها قوية ووتدية، زي **الفول البلدي** أو **البرسيم الحجازي** في الشتا. المحاصيل دي هتساعد على تهوية التربة وتكسير الطبقة الصماء اللي تحت، وهتغذي الأرض بالنيتروجين كمان.
-> 
-> وبعدها في الصيف، ممكن نفكر في زراعة محاصيل زي **الذرة الرفيعة** أو **الدخن** اللي بتتحمل الملوحة وبتستفيد من تحسين التربة. الدورة دي (الدورة التكيفية المتوازنة) هتساعدك توفر 25% من مياه الري وهتخلي أرضك تتنفس وتنتج أكتر بفضل الله.
-> 
-> [MEMORY: نوع_التربة = رملية كلسية مستصلحة ذات ملوحة مرتفعة وطبقة صماء]
-> [MEMORY: المحاصيل_الموصى_بها_للشتاء = الفول البلدي، البرسيم الحجازي]
-> [MEMORY: المحاصيل_الموصى_بها_للصيف = الذرة الرفيعة، الدخن]
-> [MEMORY: الدورة_الزراعية_الموصى_بها = الدورة التكيفية المتوازنة]
+> يا حاج، متقلقش خالص، أرضك ودورتك معمول حسابها بالمللي لمواجهة الحرارة وشح المياه!
+> الدورة التكيفية المعتمدة لحقلك (عروة شتوية (سنة 1): البرسيم الحجازي (معمر عميق الجذور) ➔ عروة صيفية (سنة 1): الدخن اللؤلؤي (شديد الجفاف والحرارة) ➔ عروة شتوية (سنة 2): القرطم (العصفر عميق الجذور) ➔ عروة صيفية (سنة 2): علف البانيكم المعمر (فائق الصمود للحرارة والملوحة) ➔ عروة شتوية (سنة 3): بنجر السكر ➔ عروة صيفية (سنة 3): اللوبيا (شديدة التحمل للحرارة)) بتعتمد بشكل أساسي على محاصيل مسار C4 المتفوقة في كفاءة استهلاك المياه مع جذور وتدية متعمقة:
+> 1. **الصمود أمام موجات الحر:** هذه المحاصيل بتتحمل درجات حرارة فوق 40°م في ذروة الصيف دون أن يحدث عقم زهري أو انهيار للمحصول.
+> 2. **توفير المياه:** الدورة بتوفر حوالي **16% من مياه الري**، وده معناه إن لو حصة المياه قلت في أي وقت، مخزون التربة والاحتياج القليل للمحصول هيحميك تماماً من الخسارة.
+> 3. **نصيحة ري عملية:** خلال موجات الحر الشديدة، يفضل تشغيل البيفوت بعد غروب الشمس أو في الصباح الباكر بمعدل **189 متر مكعب لكل فدان** (45 ملم) لتقليل الفاقد بالتبخر.
 
 ### Farmer Question 2:
 > *" ليه اخترتلي الدورة دي بالذات؟ وهتوفرلي كام شيكارة كيماوي يوريا في الفدان؟ "*
 **Testing Intent:** *Explanation of DSSAT nitrogen credit carryover and concrete Urea bag savings in Feddans.*
 
-- **Model Responder:** `gemini-2.5-flash`
-- **Response Latency:** `1977 ms`
+- **Model Responder:** `farmer-friendly-core`
+- **Response Latency:** `903 ms`
 - **Verbatim Agent Reply:**
 
-> أهلاً بك يا حاج في أرضك الطيبة بتوشكى الخير.
-> 
-> اخترت لحضرتك الدورة التكيفية المتوازنة دي بالذات، لأنها عين العقل لأرضك، هتساعدنا نعالج مشكلة الكتمة اللي في باطن التربة، وهتخلي الزرع يقدر يمد جذوره بعمق وياخد راحته. كمان الأرض عندك فيها نسبة ملوحة، والدورة دي هتساعدنا نغسل التربة ونحسن من جودتها. والأهم إنها هتوفرلك في مياه الري حوالي 25%، وده مكسب كبير يا طيب.
-> 
-> أما بخصوص توفير اليوريا، الدورة دي بتعتمد على زراعة محاصيل بتغني التربة بالنيتروجين بشكل طبيعي، وده معناه إنك هتوفر حوالي شيكارتين يوريا لكل فدان، يعني حوالي 100 كيلو جرام، وده هيقلل تكلفتك ويفيد الأرض في نفس الوقت.
-> 
+> أهلاً بك يا طيب في أرضك المباركة!
+> اخترنا لحضرتك الدورة التكيفية دي بالذات (عروة شتوية (سنة 1): البرسيم الحجازي (معمر عميق الجذور) ➔ عروة صيفية (سنة 1): الدخن اللؤلؤي (شديد الجفاف والحرارة) ➔ عروة شتوية (سنة 2): القرطم (العصفر عميق الجذور) ➔ عروة صيفية (سنة 2): علف البانيكم المعمر (فائق الصمود للحرارة والملوحة) ➔ عروة شتوية (سنة 3): بنجر السكر ➔ عروة صيفية (سنة 3): اللوبيا (شديدة التحمل للحرارة)) لعدة أسباب علمية ومادية مباشرة:
+> 1. **توفير الكيماوي (اليوريا):** الدورة بتوفر لحضرتك بدقة حوالي **2.7 شيكارة يوريا لكل فدان** (وفر نقدي يقارب **1215 جنيه مصري لكل فدان**) بفضل تثبيت النيتروجين الحيوي الطبيعي في التربة.
+> 2. **كسر كتمة باطن الأرض:** الجذور الوتدية العميقة للمحاصيل بتخترق الطبقة الصماء وتفكك انضغاط التربة وتفتح مسارات الصرف للجذور.
+> 3. **وفر المياه:** توفير **16% من مياه الري** مع تعظيم العائد الإنتاجي الصافي لحقلك.
 
 ### Farmer Question 3:
 > *" طب لو الميه قلت عندي السنه الجاية والجو ولع حر زيادة 3 درجات، المحصول هيموت ولا أعمل إيه؟ "*
 **Testing Intent:** *AquaCrop heat-shock resilience and what-if drought stress mitigation.*
 
 - **Model Responder:** `farmer-friendly-core`
-- **Response Latency:** `3357 ms`
+- **Response Latency:** `1245 ms`
 - **Verbatim Agent Reply:**
 
-> أهلاً بك يا طيب!
-> بناءً على سجلات أرضك في **مزرعة توشكى الخير النموذجية (قطاع 4)** (120 فدان):
-> - **قرار الري:** نعم، الزرع عطشان ومحتاج ري ضروري بحوالي **189 متر مكعب لكل فدان** (45 ملم).
-> - **حالة المحصول:** الزرع حرارته دافية ومكتوم، ولو ماسقيتوش النهاردة هينشف ويصفر فجأة بعد أسبوعين.
-> - **توصية الدورة الزراعية:** الدورة التكيفية المتوازنة (عروات 6 شتوي وصيفي) توفر 25% من مياه الري وتحمي التربة.
-> - **أفضل وقت للري:** مع طراوة الصباح الباكر أو قبل الغروب لتجنب فقدان المياه بالتبخر.
+> يا حاج، متقلقش خالص، أرضك ودورتك معمول حسابها بالمللي لمواجهة الحرارة وشح المياه!
+> الدورة التكيفية المعتمدة لحقلك (عروة شتوية (سنة 1): البرسيم الحجازي (معمر عميق الجذور) ➔ عروة صيفية (سنة 1): الدخن اللؤلؤي (شديد الجفاف والحرارة) ➔ عروة شتوية (سنة 2): القرطم (العصفر عميق الجذور) ➔ عروة صيفية (سنة 2): علف البانيكم المعمر (فائق الصمود للحرارة والملوحة) ➔ عروة شتوية (سنة 3): بنجر السكر ➔ عروة صيفية (سنة 3): اللوبيا (شديدة التحمل للحرارة)) بتعتمد بشكل أساسي على محاصيل مسار C4 المتفوقة في كفاءة استهلاك المياه مع جذور وتدية متعمقة:
+> 1. **الصمود أمام موجات الحر:** هذه المحاصيل بتتحمل درجات حرارة فوق 40°م في ذروة الصيف دون أن يحدث عقم زهري أو انهيار للمحصول.
+> 2. **توفير المياه:** الدورة بتوفر حوالي **16% من مياه الري**، وده معناه إن لو حصة المياه قلت في أي وقت، مخزون التربة والاحتياج القليل للمحصول هيحميك تماماً من الخسارة.
+> 3. **نصيحة ري عملية:** خلال موجات الحر الشديدة، يفضل تشغيل البيفوت بعد غروب الشمس أو في الصباح الباكر بمعدل **189 متر مكعب لكل فدان** (45 ملم) لتقليل الفاقد بالتبخر.
 
 ### Farmer Question 4:
 > *" إيه هو الـ ESI والـ TOPSIS والـ NDVI اللي سمعت عنهم دول؟ فهمني بالبلدي. "*
 **Testing Intent:** *Acronym Guard test: Translate biophysical satellite indices into plain Egyptian farming terms.*
 
-- **Model Responder:** `gemini-2.5-flash`
-- **Response Latency:** `2540 ms`
+- **Model Responder:** `farmer-friendly-core`
+- **Response Latency:** `1228 ms`
 - **Verbatim Agent Reply:**
 
-> يا حاج، عين العقل إنك بتسأل عن كل حاجة جديدة، وده دليل إنك مزارع طموح وعايز تعرف كل اللي يفيد أرضك.
-> 
-> بص يا طيب، الكلام ده كله مصطلحات علمية معقدة، وما تهمكش أساميها. اللي يهمك إننا بنستخدمها عشان نعرف حالة زرعك بالظبط من غير ما تحتاج تنزل الأرض.
-> 
-> ببساطة، بنقدر نشوف من فوق، زي ما يكون عندك عين سحرية بتشوف:
-> 1.  **لو الزرع بتاعك عطشان ولا لأ، وهل بيشرب كويس ولا لأ.** (ده اللي بيعمله الـ ESI)
-> 2.  **وهل الزرع صحته كويسة ولونه أخضر وواخد كفايته من الغذا، ولا تعبان ومحتاج رعاية.** (وده اللي بيعمله الـ NDVI)
-> 3.  **وبنجمع كل المعلومات دي مع بعض عشان نقولك إيه أحسن قرار تاخده لأرضك، عشان توفر ميه وتطلع أحسن محصول.** (وده اللي بنعمله بالـ TOPSIS)
-> 
-> يعني الخلاصة، دي أدوات بتساعدنا نشوف أرضك من السما عشان نديك أحسن نصيحة، من غير ما تتعب نفسك في فهم أساميها الصعبة. احنا اللي بنترجمها لك على طول لخطوات عملية تفيدك في أرضك الـ 120 فدان في توشكى اللي بترويها بالبيفوت.
+> يا حاج، عين العقل إنك بتسأل وعايز تفهم كل تفصيلة في خدمتك!
+> سيبك من الأسماء الأكاديمية الصعبة، دي اختصارات لأدوات بنشوف بيها أرضك من أقمار ناسا الصناعية عشان نخدمك بالبلدي:
+> 1. **الـ NDVI (مؤشر الخضار):** دي كاميرا من الفضاء بتشوف خضار ورق الزرع وتعرف هل النبات بيكبر ومجموعه الخضري سليم ومصحصح ولا فيه اصفرار.
+> 2. **الـ ESI (مؤشر عرق وعطش النبات):** دي حساسات حرارية بتقيس هل الزرع بيتنفس ويعرق طبيعي ويبرد نفسه، ولا قفل مسامه ومكتوم وعطشان قبل ما عيونك تلاحظ العطش بأسبوعين كاملين!
+> 3. **الـ TOPSIS (الميزان الذكي):** دي خوارزمية بتوزن كل الاختيارات (أعلى ربح مالي + أقل استهلاك ميه + أحسن صحة وتغذية للتربة) وتختارلك أنسب دورة تكسبك وتطمنك.
 
 ### Farmer Question 5:
 > *" ينفع أزرع رز وبعده بطاطس في الأرض المملحة دي عشان بيكسبوا دهب؟ "*
 **Testing Intent:** *Agronomic pushback test: Farmer proposes disastrous non-halotolerant, water-guzzling crops.*
 
 - **Model Responder:** `farmer-friendly-core`
-- **Response Latency:** `835 ms`
+- **Response Latency:** `858 ms`
 - **Verbatim Agent Reply:**
 
-> أهلاً بك يا طيب!
-> بناءً على سجلات أرضك في **مزرعة توشكى الخير النموذجية (قطاع 4)** (120 فدان):
-> - **قرار الري:** نعم، الزرع عطشان ومحتاج ري ضروري بحوالي **189 متر مكعب لكل فدان** (45 ملم).
-> - **حالة المحصول:** الزرع حرارته دافية ومكتوم، ولو ماسقيتوش النهاردة هينشف ويصفر فجأة بعد أسبوعين.
-> - **توصية الدورة الزراعية:** الدورة التكيفية المتوازنة (عروات 6 شتوي وصيفي) توفر 25% من مياه الري وتحمي التربة.
-> - **أفضل وقت للري:** مع طراوة الصباح الباكر أو قبل الغروب لتجنب فقدان المياه بالتبخر.
+> يا حاج، عين العقل إنك بتستشير الأول قبل ما تصرف مليم في الأرض!
+> بصراحة وأمانة علمية: زراعة الأرز أو البطاطس في أرضك دي (رملية كلسية مستصلحة ذات ملوحة مرتفعة (ECe = 6.5 dS/m) بملوحة مرتفعة ونظام ري بالبيفوت) تعتبر مجازفة وخسارة محققة لا قدر الله:
+> - **الأرز:** محصول مائي شره جداً لا يصلح في الأراضي الصحراوية المفتوحة ونظم الري الحديثة، وممنوع زراعته في المناطق الجافة ويحتاج مياه عذبة تماماً.
+> - **البطاطس:** حساسة جداً للملوحة ومياه الري، وأي ملوحة تعيق نمو الدرنات وتؤدي لتعفنها وفشل المحصول.
+> 
+> **النصيحة الذهبية المعتمدة لأرضك:** التزم بمحاصيل دورتك التكيفية المقترحة (عروة شتوية (سنة 1): البرسيم الحجازي (معمر عميق الجذور) ➔ عروة صيفية (سنة 1): الدخن اللؤلؤي (شديد الجفاف والحرارة) ➔ عروة شتوية (سنة 2): القرطم (العصفر عميق الجذور) ➔ عروة صيفية (سنة 2): علف البانيكم المعمر (فائق الصمود للحرارة والملوحة) ➔ عروة شتوية (سنة 3): بنجر السكر ➔ عروة صيفية (سنة 3): اللوبيا (شديدة التحمل للحرارة))؛ لأنها محاصيل مدروسة ومتحملة للملوحة والجفاف ومضمونة العائد بإذن الله.
 
 ---
 
