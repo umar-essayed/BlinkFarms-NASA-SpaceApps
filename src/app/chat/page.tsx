@@ -40,7 +40,11 @@ export default function DedicatedChatPage() {
   // Initialize and load sessions & central memory from LocalStorage
   useEffect(() => {
     const savedLang = localStorage.getItem('blinkfarms_lang') as Language;
-    if (savedLang) setLang(savedLang);
+    if (savedLang) {
+      setLang(savedLang);
+      document.documentElement.lang = savedLang;
+      document.documentElement.dir = savedLang === 'ar' ? 'rtl' : 'ltr';
+    }
 
     // Read Central Cross-Session Memory
     const savedCentralMem = localStorage.getItem('blinkfarms_central_memory');
@@ -503,28 +507,16 @@ export default function DedicatedChatPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* PWA Install Button */}
-            <PwaInstallPrompt lang={lang} />
-
-            {/* Live Voice Call Button in Header */}
-            <button
-              onClick={() => setIsVoiceOverlayOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-[11px] font-bold shadow-sm shadow-emerald-500/20 active:scale-95 transition-all"
-              title={lang === 'ar' ? 'تحدث مع BlinkAI بالصوت المباشر' : 'Live Voice Call with BlinkAI'}
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-              <span>{lang === 'ar' ? 'مكالمة صوتية' : 'Live Voice'}</span>
-            </button>
-
             <button
               onClick={toggleLang}
-              className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-white/10 text-neutral-200 active:scale-95 transition-all"
+              className="text-[11px] font-bold px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 text-neutral-200 active:scale-95 transition-all"
             >
               {lang === 'ar' ? 'English' : 'عربي'}
             </button>
             <Link
               href="/"
               className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-white/10 text-neutral-300 hover:bg-white/20 active:scale-95 transition-all flex items-center gap-1"
+              title={lang === 'ar' ? 'الرجوع للرئيسية' : 'Back to Radar'}
             >
               <span>✕</span>
             </Link>
