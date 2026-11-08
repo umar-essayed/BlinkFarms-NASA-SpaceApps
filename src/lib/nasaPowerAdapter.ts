@@ -83,7 +83,8 @@ export async function fetchNasaPowerDaily(
             const tMax = params.T2M_MAX?.[d] ?? t2m + 5;
             const tMin = params.T2M_MIN?.[d] ?? t2m - 5;
             const rh = params.RH2M?.[d] ?? 45;
-            const swDwnMj = params.ALLSKY_SFC_SW_DWN?.[d] ?? 20; // MJ/m^2/day
+            const rawSw = params.ALLSKY_SFC_SW_DWN?.[d];
+            const swDwnMj = (rawSw !== undefined && rawSw > 0) ? rawSw : 22.5; // MJ/m^2/day (NASA -999 missing flag guard)
             const swWm2 = (swDwnMj * 1000000) / 86400; // convert to average W/m^2
             const ws = params.WS2M?.[d] ?? 2.5;
             const rain = params.PRECTOTCORR?.[d] ?? 0;
