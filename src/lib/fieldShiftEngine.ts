@@ -306,6 +306,8 @@ function simulateSingleSeason(
     netIncomeUsdHa,
     transitionReasonAr,
     transitionReasonEn,
+    selectedCultivar: crop.egyptianProfile?.certifiedCultivars?.[0],
+    egyptianProfile: crop.egyptianProfile,
   };
 
   return { season, nextState };
@@ -409,7 +411,8 @@ function evaluate6SeasonSequence(
 
   const totalNitrogenAddedKgHa = seasons.reduce((acc, s) => acc + s.soilNitrogenDeltaKgHa, 0);
   const totalUreaBagsSavedPerFeddan = Number(seasons.reduce((acc, s) => acc + s.ureaBagsSavedPerFeddan, 0).toFixed(1));
-  const totalFertilizerSavingsEgp = Math.round(totalUreaBagsSavedPerFeddan * 450); // 450 EGP per 50kg bag
+  // Real-world Egyptian economic valuation: 950 EGP per 50kg bag (commercial free market rate; subsidized cooperative card is ~450 EGP)
+  const totalFertilizerSavingsEgp = Math.round(totalUreaBagsSavedPerFeddan * 950);
 
   const avgFailureRiskPercent = Math.round(seasons.reduce((acc, s) => acc + s.failureRiskPercent, 0) / 6);
   const totalNetProfitUsdHa = seasons.reduce((acc, s) => acc + s.netIncomeUsdHa, 0);

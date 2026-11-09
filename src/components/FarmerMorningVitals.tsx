@@ -1,171 +1,267 @@
 'use client';
 
 import React from 'react';
-import { FlashDroughtTelemetry } from '@/lib/types';
+import { FlashDroughtTelemetry, UnifiedFarmVitals, Language } from '@/lib/types';
 
 interface FarmerMorningVitalsProps {
   telemetry: FlashDroughtTelemetry;
+  vitals?: UnifiedFarmVitals;
   areaFeddan: number;
-  lang: 'ar' | 'en';
+  lang: Language;
 }
 
 export default function FarmerMorningVitals({
   telemetry,
+  vitals,
   areaFeddan,
   lang,
 }: FarmerMorningVitalsProps) {
-  // 1. Canopy Water Stress & Transpiration Status
-  const isThirsty = telemetry.isFlashDroughtAlert || telemetry.canopyTempAnomalyC > 1.8;
-  const isOptimal = telemetry.canopyTempAnomalyC <= 1.0;
+  // 1. Irrigation Prescription (Single Authoritative Source)
+  const prescribedMm = vitals?.irrigationPrescription.depthMm ?? (telemetry.prescribedIrrigationMm || 17.2);
+  const m3PerFeddan = vitals?.irrigationPrescription.volumePerFeddanM3 ?? Math.round(prescribedMm * 4.20083);
+  const totalFieldM3 = vitals?.irrigationPrescription.volumeTotalFieldM3 ?? Math.round(m3PerFeddan * areaFeddan);
+  const urgency = vitals?.irrigationPrescription.urgencyLevel ?? (telemetry.isFlashDroughtAlert ? 'emergency_quenching' : 'routine_maintenance');
 
-  // 2. Daily Irrigation Dose (mm to m3 per feddan: 1 mm on 1 feddan = 4.2 m3)
-  const prescribedMm = telemetry.prescribedIrrigationMm || 4.8;
-  const m3PerFeddan = Math.round(prescribedMm * 4.2);
-  const totalFieldM3 = Math.round(m3PerFeddan * areaFeddan);
+  // 2. Agrochemical & Foliar Spray Window
+  const isSpraySafe = vitals?.sprayWindow.isSafeToSpray ?? (!telemetry.isFlashDroughtAlert);
+  const windKmH = vitals?.sprayWindow.windSpeedKmH ?? 11;
+  const rhPct = vitals?.sprayWindow.relativeHumidityPct ?? 58;
+  const sprayVerdict = vitals?.sprayWindow.verdictAr ?? (isSpraySafe ? '✅ ساعات آمنة للرش: رياح هادئة ولا خطر للتطاير' : '⚠️ تأجيل الرش: نشاط رياح أو حرارة مرتفعة');
+  const sprayVerdictEn = vitals?.sprayWindow.verdictEn ?? (isSpraySafe ? '✅ Safe window: Calm winds, no droplet drift risk' : '⚠️ Delay spraying: Active wind or high temperature');
+  const spraySlot = vitals?.sprayWindow.recommendedTimeSlotAr ?? 'الفترة الآمنة: 6:00 ص إلى 8:30 ص';
+  const spraySlotEn = vitals?.sprayWindow.recommendedTimeSlotEn ?? 'Safest slot: 6:00 to 8:30 AM';
 
-  // 3. Spray Window Status (based on wind speed and humidity)
-  const isSpraySafe = !telemetry.isFlashDroughtAlert;
+  // 3. Plant vs Ambient Thermodynamics
+  const ambientAirC = vitals?.temperature.ambientAirC ?? telemetry.airTempC;
+  const canopyTempC = vitals?.temperature.canopyTempC ?? telemetry.canopyTempC;
+  const deltaTC = vitals?.temperature.deltaTC ?? Number((canopyTempC - ambientAirC).toFixed(1));
+  const isFever = deltaTC > 1.8 || telemetry.isFlashDroughtAlert;
+  const isCooled = deltaTC <= 0.2;
 
-  // 4. Subsoil Moisture Status
-  const rootMoisturePct = Math.min(100, Math.round((telemetry.rootZoneMoistureMm / 70) * 100));
+  // 4. Root-Zone Subsoil Hydrology (SMAP 30m)
+  const rootMoisturePct = vitals?.hydrology.rootZoneMoisturePercent ?? Math.min(100, Math.round((telemetry.rootZoneMoistureMm / 70) * 100));
+  const rootMm = vitals?.hydrology.rootZoneMoistureMm ?? telemetry.rootZoneMoistureMm;
 
   return (
-    <div className="space-y-2.5">
-      {/* Title Bar */}
-      <div className="flex items-center justify-between px-1">
-        <div className="flex items-center gap-2">
-          <span className="text-lg">☀️</span>
+    <div className="space-y-3">
+      {/* Executive Title Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 px-1">
+        <div className="flex items-center gap-2.5">
+          <span className="text-xl">☀️</span>
           <div>
-            <h3 className="text-sm font-extrabold text-neutral-900 dark:text-white">
-              {lang === 'ar' ? 'فحص الصباح الحي: المؤشرات الحيوية لحقلك' : "Morning Field Vitals (Daily Diagnostics)"}
+            <h3 className="text-sm sm:text-base font-extrabold text-neutral-900 dark:text-white flex items-center gap-2">
+              <span>{lang === 'ar' ? 'لوحة القرارات التنفيذية اليومية للحقل' : 'Daily Field Operations Center'}</span>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold">
+                UNIFIED V2
+              </span>
             </h3>
             <span className="text-[11px] text-neutral-500 dark:text-neutral-400">
-              {lang === 'ar' ? 'تحديث تلقائي مع شروق الشمس من أقمار ناسا الصناعية' : 'Auto-updated at sunrise via NASA satellites'}
+              {lang === 'ar'
+                ? 'توجيهات تشغيلية موحدة ومحسوبة بدقة أقمار ناسا (ECOSTRESS + SMAP + POWER)'
+                : 'Unified operational prescriptions coupled to NASA satellite telemetry'}
             </span>
           </div>
         </div>
 
-        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-mono">
-          LIVE TELEMETRY
-        </span>
+        <div className="flex items-center gap-2 text-xs font-semibold text-neutral-600 dark:text-neutral-300">
+          <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+          <span>{lang === 'ar' ? `حيازة: ${areaFeddan} فدان` : `Parcel: ${areaFeddan} feddans`}</span>
+        </div>
       </div>
 
-      {/* 4 Core Vital Cards Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
-        {/* Card 1: Crop Thirst & Stomatal Transpiration */}
-        <div className={`p-3.5 sm:p-4 rounded-3xl border transition-all ${
-          isThirsty
-            ? 'bg-rose-50/80 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/40 shadow-sm'
-            : isOptimal
-            ? 'bg-emerald-50/80 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/40 shadow-sm'
-            : 'bg-amber-50/80 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/40 shadow-sm'
+      {/* The 4 Authoritative Operational Decision Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* CARD 1: TODAY'S IRRIGATION PRESCRIPTION */}
+        <div className="p-4 sm:p-5 rounded-3xl bg-blue-50/80 dark:bg-blue-950/20 border border-blue-200/80 dark:border-blue-900/40 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-neutral-600 dark:text-neutral-300 flex items-center gap-1.5">
+                <span>💧</span>
+                <span>{lang === 'ar' ? 'قرار الري اليوم' : "Today's Irrigation"}</span>
+              </span>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                urgency === 'emergency_quenching'
+                  ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30'
+                  : urgency === 'early_deficit_replenish'
+                  ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30'
+                  : 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30'
+              }`}>
+                {urgency === 'emergency_quenching'
+                  ? (lang === 'ar' ? '🚨 ري إنقاذي عاجل' : '🚨 Urgent Quenching')
+                  : urgency === 'early_deficit_replenish'
+                  ? (lang === 'ar' ? '⚡ ري تعويضي' : '⚡ Replenish')
+                  : (lang === 'ar' ? '💧 ري صيانة دوري' : '💧 Routine Maintenance')}
+              </span>
+            </div>
+
+            <div className="my-2.5">
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-2xl sm:text-3xl font-black text-blue-600 dark:text-blue-400 font-mono">
+                  {m3PerFeddan}
+                </span>
+                <span className="text-xs font-bold text-neutral-600 dark:text-neutral-300">
+                  {lang === 'ar' ? 'م³/فدان' : 'm³/fed'}
+                </span>
+              </div>
+              <div className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 mt-1">
+                {lang === 'ar'
+                  ? `إجمالي الحقل (${areaFeddan} فدان): ${totalFieldM3.toLocaleString()} م³`
+                  : `Total field (${areaFeddan} fed): ${totalFieldM3.toLocaleString()} m³`}
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-blue-200/50 dark:border-blue-900/30 space-y-1">
+            <p className="text-[11px] font-medium text-neutral-600 dark:text-neutral-300 leading-snug">
+              {lang === 'ar'
+                ? `تعادل عمق ${prescribedMm.toFixed(1)} مم مياه محسوبة بدقة FAO-56.`
+                : `Equals ${prescribedMm.toFixed(1)} mm depth tuned to FAO-56 evaporative deficit.`}
+            </p>
+            <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold block">
+              {lang === 'ar' ? '⏰ أفضل ميعاد: 5:00 إلى 8:00 صباحاً' : '⏰ Best slot: 5:00 - 8:00 AM'}
+            </span>
+          </div>
+        </div>
+
+        {/* CARD 2: UNIFIED SPRAY & WIND VERDICT */}
+        <div className={`p-4 sm:p-5 rounded-3xl border shadow-sm flex flex-col justify-between ${
+          isSpraySafe
+            ? 'bg-emerald-50/80 dark:bg-emerald-950/20 border-emerald-200/80 dark:border-emerald-900/40'
+            : 'bg-amber-50/80 dark:bg-amber-950/20 border-amber-200/80 dark:border-amber-900/40'
         }`}>
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-neutral-600 dark:text-neutral-300">
-              {lang === 'ar' ? 'عطش الغيط وتنفس النبات' : 'Crop Thirst & Stomata'}
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-neutral-600 dark:text-neutral-300 flex items-center gap-1.5">
+                <span>🚜</span>
+                <span>{lang === 'ar' ? 'قرار الرش والتسميد الورقي' : 'Foliar Spray Window'}</span>
+              </span>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                isSpraySafe
+                  ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                  : 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30'
+              }`}>
+                {isSpraySafe
+                  ? (lang === 'ar' ? 'ساعات آمنة ✅' : 'Safe Window ✅')
+                  : (lang === 'ar' ? 'تأجيل الرش ⚠️' : 'Delay Spray ⚠️')}
+              </span>
+            </div>
+
+            <div className="my-2.5">
+              <div className="flex items-baseline gap-2">
+                <span className={`text-xl sm:text-2xl font-black ${
+                  isSpraySafe ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'
+                }`}>
+                  {isSpraySafe
+                    ? (lang === 'ar' ? 'مسموح بالرش الآن' : 'Ideal to Spray')
+                    : (lang === 'ar' ? 'أجّل الرش مؤقتاً' : 'Postpone Spray')}
+                </span>
+              </div>
+              <div className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 mt-1 flex items-center gap-2">
+                <span>💨 {windKmH} {lang === 'ar' ? 'كم/س رياح' : 'km/h wind'}</span>
+                <span>•</span>
+                <span>💧 {rhPct}% {lang === 'ar' ? 'رطوبة' : 'humidity'}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-black/5 dark:border-white/5 space-y-1">
+            <p className="text-[11px] font-medium text-neutral-600 dark:text-neutral-300 leading-snug">
+              {lang === 'ar' ? sprayVerdict : sprayVerdictEn}
+            </p>
+            <span className="text-[10px] text-neutral-500 dark:text-neutral-400 font-bold block">
+              {lang === 'ar' ? spraySlot : spraySlotEn}
             </span>
-            <span className="text-base">{isThirsty ? '🔥' : '🌱'}</span>
           </div>
-
-          <div className="my-2">
-            <div className={`text-xl sm:text-2xl font-black ${
-              isThirsty ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
-            }`}>
-              {isThirsty
-                ? (lang === 'ar' ? 'عطش مبكر ⚠️' : 'Early Stress ⚠️')
-                : (lang === 'ar' ? 'مرتوي ومثالي 🟢' : 'Hydrated 🟢')}
-            </div>
-            <div className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 mt-0.5">
-              {lang === 'ar'
-                ? `حرارة المسام: ${telemetry.canopyTempAnomalyC > 0 ? `+${telemetry.canopyTempAnomalyC.toFixed(1)}°C` : `${telemetry.canopyTempAnomalyC.toFixed(1)}°C`}`
-                : `Pore Delta: ${telemetry.canopyTempAnomalyC > 0 ? `+${telemetry.canopyTempAnomalyC.toFixed(1)}°C` : `${telemetry.canopyTempAnomalyC.toFixed(1)}°C`}`}
-            </div>
-          </div>
-
-          <p className="text-[11px] font-medium text-neutral-600 dark:text-neutral-300 leading-snug">
-            {isThirsty
-              ? (lang === 'ar' ? 'المسام أغلقت لتوفير المياه، افتح الري فوراً' : 'Stomata closed to conserve water. Irrigate today.')
-              : (lang === 'ar' ? 'النتح شغال بأعلى كفاءة والأوعية سليمة' : 'Transpiration running smoothly, vascular healthy.')}
-          </p>
         </div>
 
-        {/* Card 2: Today's Irrigation Prescription */}
-        <div className="p-3.5 sm:p-4 rounded-3xl bg-blue-50/80 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/40 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-neutral-600 dark:text-neutral-300">
-              {lang === 'ar' ? 'جرعة الري المطلوبة اليوم' : "Today's Irrigation Dose"}
-            </span>
-            <span className="text-base">💧</span>
+        {/* CARD 3: THERMODYNAMICS & CANOPY FEVER (Ta vs Tc) */}
+        <div className={`p-4 sm:p-5 rounded-3xl border shadow-sm flex flex-col justify-between ${
+          isFever
+            ? 'bg-rose-50/80 dark:bg-rose-950/20 border-rose-200/80 dark:border-rose-900/40'
+            : isCooled
+            ? 'bg-emerald-50/80 dark:bg-emerald-950/20 border-emerald-200/80 dark:border-emerald-900/40'
+            : 'bg-amber-50/80 dark:bg-amber-950/20 border-amber-200/80 dark:border-amber-900/40'
+        }`}>
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-neutral-600 dark:text-neutral-300 flex items-center gap-1.5">
+                <span>🌡️</span>
+                <span>{lang === 'ar' ? 'ميزان حرارة النبات والجو' : 'Canopy Thermodynamics'}</span>
+              </span>
+              <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
+                isFever
+                  ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30'
+                  : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+              }`}>
+                {deltaTC > 0 ? `ΔT +${deltaTC}°C` : `ΔT ${deltaTC}°C`}
+              </span>
+            </div>
+
+            <div className="my-2.5">
+              <div className="flex items-baseline gap-2">
+                <span className={`text-2xl sm:text-3xl font-black font-mono ${
+                  isFever ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
+                }`}>
+                  {canopyTempC}°C
+                </span>
+                <span className="text-xs font-bold text-neutral-500">
+                  {lang === 'ar' ? 'حرارة الأوراق' : 'Leaf Temp (Tc)'}
+                </span>
+              </div>
+              <div className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 mt-1">
+                {lang === 'ar'
+                  ? `حرارة الهواء الجوي: ${ambientAirC}°م • ${deltaTC > 0 ? `حمى نتحية (+${deltaTC}°م)` : `تبريد ذاتي (${deltaTC}°م)`}`
+                  : `Ambient Air: ${ambientAirC}°C • ${deltaTC > 0 ? `Canopy Fever (+${deltaTC}°C)` : `Self-Cooled (${deltaTC}°C)`}`}
+              </div>
+            </div>
           </div>
 
-          <div className="my-2">
-            <div className="text-xl sm:text-2xl font-black text-blue-600 dark:text-blue-400">
-              {m3PerFeddan} <span className="text-xs font-bold">{lang === 'ar' ? 'م³/فدان' : 'm³/fed'}</span>
-            </div>
-            <div className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 mt-0.5">
-              {lang === 'ar' ? `إجمالي أرضك (${areaFeddan} فدان): ${totalFieldM3} م³` : `Total parcel (${areaFeddan} fed): ${totalFieldM3} m³`}
-            </div>
+          <div className="pt-2 border-t border-black/5 dark:border-white/5 space-y-1">
+            <p className="text-[11px] font-medium text-neutral-600 dark:text-neutral-300 leading-snug">
+              {isFever
+                ? (lang === 'ar' ? 'المسام أغلقت لحبس الرطوبة فارتفعت حرارة الورقة، افتح الري اليوم.' : 'Stomata closed to retain moisture causing fever. Irrigate parcel today.')
+                : (lang === 'ar' ? 'النتح شغال بسلاسة والأوراق مبردة ذاتياً تحت حرارة الجو.' : 'Transpirational cooling running smoothly; canopy is cooler than air.')}
+            </p>
           </div>
-
-          <p className="text-[11px] font-medium text-neutral-600 dark:text-neutral-300 leading-snug">
-            {lang === 'ar'
-              ? `تعادل عمق ${prescribedMm.toFixed(1)} مم مياه محسوبة بدقة FAO-56`
-              : `Equals ${prescribedMm.toFixed(1)} mm depth tuned to FAO-56 evaporative deficit.`}
-          </p>
         </div>
 
-        {/* Card 3: Spraying & Foliar Window */}
-        <div className="p-3.5 sm:p-4 rounded-3xl bg-amber-50/80 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-neutral-600 dark:text-neutral-300">
-              {lang === 'ar' ? 'أمان رش المغذيات والمبيدات' : 'Foliar Spray Window'}
-            </span>
-            <span className="text-base">🚜</span>
-          </div>
-
-          <div className="my-2">
-            <div className="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-400">
-              {isSpraySafe
-                ? (lang === 'ar' ? 'ساعات آمنة ✅' : 'Safe Window ✅')
-                : (lang === 'ar' ? 'تأجيل الرش ⚠️' : 'Delay Spray ⚠️')}
+        {/* CARD 4: ROOT-ZONE SOIL MOISTURE (SMAP 30m) */}
+        <div className="p-4 sm:p-5 rounded-3xl bg-teal-50/80 dark:bg-teal-950/20 border border-teal-200/80 dark:border-teal-900/40 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-neutral-600 dark:text-neutral-300 flex items-center gap-1.5">
+                <span>🌍</span>
+                <span>{lang === 'ar' ? 'رطوبة باطن الأرض (الجذور)' : 'Root-Zone Moisture (SMAP)'}</span>
+              </span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-500/15 text-teal-600 dark:text-teal-400 border border-teal-500/30">
+                30m RESOLUTION
+              </span>
             </div>
-            <div className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 mt-0.5">
-              {lang === 'ar' ? 'الفترة المثالية: 6:30 ص إلى 9:30 ص' : 'Best slot: 6:30 AM to 9:30 AM'}
-            </div>
-          </div>
 
-          <p className="text-[11px] font-medium text-neutral-600 dark:text-neutral-300 leading-snug">
-            {lang === 'ar'
-              ? 'الرياح هادئة ولا خطر لتطاير الرذاذ أو حرق الأوراق'
-              : 'Calm wind, minimal droplet drift or foliar scorch risk.'}
-          </p>
-        </div>
-
-        {/* Card 4: Subsoil Moisture & Hardpan */}
-        <div className="p-3.5 sm:p-4 rounded-3xl bg-emerald-50/80 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-neutral-600 dark:text-neutral-300">
-              {lang === 'ar' ? 'رطوبة باطن الأرض (الجذور)' : 'Root-Zone Subsoil (SMAP)'}
-            </span>
-            <span className="text-base">🌍</span>
-          </div>
-
-          <div className="my-2">
-            <div className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400">
-              {rootMoisturePct}%
-            </div>
-            <div className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 mt-0.5">
-              {lang === 'ar'
-                ? `مسبار ناسا SMAP بدقة 30م: ${telemetry.rootZoneMoistureMm.toFixed(1)} مم`
-                : `NASA SMAP (30m downscaled): ${telemetry.rootZoneMoistureMm.toFixed(1)} mm`}
+            <div className="my-2.5">
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl sm:text-3xl font-black text-teal-600 dark:text-teal-400 font-mono">
+                  {rootMoisturePct}%
+                </span>
+                <span className="text-xs font-bold text-neutral-500">
+                  {lang === 'ar' ? 'سعة حقلية' : 'Available Water'}
+                </span>
+              </div>
+              <div className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 mt-1">
+                {lang === 'ar'
+                  ? `مسبار SMAP بدقة 30م: ${rootMm.toFixed(1)} مم ماء متوفر`
+                  : `Downscaled SMAP: ${rootMm.toFixed(1)} mm available water`}
+              </div>
             </div>
           </div>
 
-          <p className="text-[11px] font-medium text-neutral-600 dark:text-neutral-300 leading-snug">
-            {lang === 'ar'
-              ? (rootMoisturePct > 45 ? 'المخزون تحت السطح كافي، الجذور تتغذى بارتياح' : 'مخزون القاع منخفض، يحتاج ري عميق')
-              : (rootMoisturePct > 45 ? 'Adequate subsoil reservoir for active root expansion.' : 'Low subsoil storage, requires deep soak.')}
-          </p>
+          <div className="pt-2 border-t border-teal-200/50 dark:border-teal-900/30 space-y-1">
+            <p className="text-[11px] font-medium text-neutral-600 dark:text-neutral-300 leading-snug">
+              {rootMoisturePct >= 50
+                ? (lang === 'ar' ? 'مخزون الرطوبة حول الجذور آمن ومريح للنبات.' : 'Healthy moisture reservoir in active root uptake zone.')
+                : (lang === 'ar' ? 'مخزون القاع منخفض، يحتاج ري عميق لترطيب الجذور.' : 'Subsoil reservoir depleted, deep soaking recommended.')}
+            </p>
+          </div>
         </div>
       </div>
     </div>

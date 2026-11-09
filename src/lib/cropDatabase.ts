@@ -5,6 +5,7 @@
 // ==============================================================================
 
 import { Crop } from './types';
+import { EGYPTIAN_CROP_PROFILES } from './egyptianCropProfiles';
 
 export const CROP_DATABASE: Record<string, Crop> = {
   // ----------------------------------------------------------------------------
@@ -807,6 +808,13 @@ export const CROP_DATABASE: Record<string, Crop> = {
     suitableRegions: ['mena_arid'],
   }
 };
+
+// Attach Egyptian Agronomic Extension Profiles
+Object.entries(EGYPTIAN_CROP_PROFILES).forEach(([cropId, profile]) => {
+  if (CROP_DATABASE[cropId]) {
+    CROP_DATABASE[cropId].egyptianProfile = profile;
+  }
+});
 
 // Aliases for seamless indexing
 (CROP_DATABASE as any).berseem_clover = CROP_DATABASE.clover_berseem;

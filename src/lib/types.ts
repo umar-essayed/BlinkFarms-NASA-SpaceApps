@@ -11,6 +11,67 @@ export interface BotanicalFamily {
   nameEn: string;
 }
 
+export interface EgyptianCultivar {
+  nameAr: string;
+  nameEn: string;
+  registrationCode: string;
+  suitableRegions: ('delta' | 'middle_egypt' | 'upper_egypt' | 'reclaimed_desert')[];
+  maturityDays: number;
+  salinityToleranceDsM: number;
+  featuresAr: string;
+  featuresEn: string;
+}
+
+export interface FertilizerDoseStage {
+  stageNameAr: string;
+  stageNameEn: string;
+  daysAfterSowing: string;
+  ureaBagsPerFeddan: number;
+  nitrateBagsPerFeddan?: number;
+  superphosphateBagsPerFeddan: number;
+  potassiumSulfateKgPerFeddan: number;
+  applicationMethodAr: string;
+  applicationMethodEn: string;
+  notesAr: string;
+  notesEn: string;
+}
+
+export interface EgyptianCropProfile {
+  cropId: string;
+  traditionalUnitAr: 'إردب' | 'قنطار' | 'طن';
+  traditionalUnitEn: 'Ardab' | 'Qintar' | 'Metric Ton';
+  unitWeightKg: number;
+  expectedYieldPerFeddan: {
+    min: number;
+    max: number;
+    average: number;
+    traditionalUnitAr: string;
+    traditionalUnitEn: string;
+    metricTonsAverage: number;
+  };
+  certifiedCultivars: EgyptianCultivar[];
+  sowingWindows: {
+    deltaAr: string;
+    upperEgyptAr: string;
+    desertAr: string;
+    optimalRangeEn: string;
+  };
+  seedRatePerFeddan: {
+    amount: string;
+    methodAr: string;
+    methodEn: string;
+  };
+  phasedFertilizerSchedule: FertilizerDoseStage[];
+  economicsEgp: {
+    productionCostPerFeddan: number;
+    marketPricePerUnit: number;
+    grossRevenuePerFeddan: number;
+    netProfitPerFeddan: number;
+  };
+  soilSynergyNoteAr: string;
+  soilSynergyNoteEn: string;
+}
+
 export interface Crop {
   id: string;
   nameAr: string;
@@ -19,6 +80,9 @@ export interface Crop {
   familyNameAr: string;
   familyNameEn: string;
   season: 'summer' | 'winter' | 'perennial' | 'dual';
+  
+  // Egyptian Agronomic Extension
+  egyptianProfile?: EgyptianCropProfile;
   
   // FAO AquaCrop & Photosynthetic Pathway
   c3_c4pathway: 'C3' | 'C4';
@@ -90,6 +154,8 @@ export interface RotationSeason {
   netIncomeUsdHa: number;
   transitionReasonAr: string;
   transitionReasonEn: string;
+  selectedCultivar?: EgyptianCultivar;
+  egyptianProfile?: EgyptianCropProfile;
 }
 
 export interface RotationYear {
@@ -200,3 +266,71 @@ export interface ChatMessage {
     labelEn: string;
   };
 }
+
+export interface UnifiedFarmVitals {
+  fieldId: string;
+  fieldNameAr: string;
+  fieldNameEn: string;
+  coordinates: [number, number];
+  areaFeddan: number;
+  lastUpdatedIso: string;
+
+  // Integrated Thermodynamics (Air vs Canopy)
+  temperature: {
+    ambientAirC: number;           // NASA POWER T_air
+    ambientMaxC: number;
+    ambientMinC: number;
+    canopyTempC: number;           // ECOSTRESS T_c
+    deltaTC: number;               // Delta T = T_c - T_air (Canopy fever / cooling differential)
+    thermodynamicState: 'cooling_efficiently' | 'mild_warming' | 'fever_shutdown';
+    summaryAr: string;
+    summaryEn: string;
+  };
+
+  // Plant Hydrology & Stomatal Dynamics
+  hydrology: {
+    evaporativeStressIndex: number;// ESI (0.0 - 1.0)
+    deltaESI7d: number;            // 7-day velocity of stress collapse
+    rootZoneMoistureMm: number;    // SMAP 30m downscaled root moisture
+    rootZoneMoisturePercent: number;// Percentage of Total Available Water (TAW)
+    subsoilStatus: 'abundant' | 'adequate' | 'deficit_deep_irrigation_needed';
+    summaryAr: string;
+    summaryEn: string;
+  };
+
+  // Unified Irrigation Prescription (FAO-56 Dual Kc)
+  irrigationPrescription: {
+    depthMm: number;               // Calculated evaporative replacement depth
+    volumePerFeddanM3: number;     // depthMm * 4.20083
+    volumeTotalFieldM3: number;    // volumePerFeddanM3 * areaFeddan
+    urgencyLevel: 'routine_maintenance' | 'early_deficit_replenish' | 'emergency_quenching';
+    optimalWindowAr: string;       // e.g. "مع طراوة الفجر (5:00 - 7:30 ص)"
+    optimalWindowEn: string;
+    summaryAr: string;
+    summaryEn: string;
+  };
+
+  // Unified Agrochemical Spray Window (Single Source of Truth)
+  sprayWindow: {
+    isSafeToSpray: boolean;        // True ONLY if wind <= 15 km/h AND rain < 0.2 mm AND temp <= 32C AND !isFlashDroughtAlert
+    windSpeedKmH: number;
+    relativeHumidityPct: number;
+    rainMm: number;
+    fungalSporeRisk: 'low' | 'moderate' | 'high';
+    verdictAr: string;
+    verdictEn: string;
+    recommendedTimeSlotAr: string;
+    recommendedTimeSlotEn: string;
+  };
+
+  // Early Flash Drought Threat Detection
+  flashDroughtThreat: {
+    level: 1 | 2 | 3;              // 1: Stable, 2: Watch (48h), 3: Alert (Canopy Fever)
+    isAlert: boolean;
+    daysToIrreversibleBrowning: number; // e.g. 14 days lead time over NDVI
+    currentNDVI: number;
+    warningNarrativeAr: string;
+    warningNarrativeEn: string;
+  };
+}
+

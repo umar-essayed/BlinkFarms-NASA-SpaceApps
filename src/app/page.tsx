@@ -4,12 +4,14 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { Language, FieldMemoryState } from '@/lib/types';
+import { Language, FieldMemoryState, UnifiedFarmVitals } from '@/lib/types';
+import { DailyWeatherObservation } from '@/lib/provenanceTypes';
 import {
   DEMO_FIELDS,
   FieldPreset,
   generateFieldTelemetry,
   deriveFieldMemoryFromCoords,
+  buildUnifiedFarmVitals,
 } from '@/lib/veloceRootEngine';
 import {
   simulateRotationStrategies,
@@ -30,9 +32,6 @@ import {
   LightningIcon,
   RefreshIcon,
   MessageCircleIcon,
-  DropletsIcon,
-  SunIcon,
-  LeafIcon,
 } from '@/components/Icons';
 
 // Dynamically import Clean Leaflet Satellite Map
@@ -151,6 +150,9 @@ export default function BlinkFarmsApp() {
     }
   }, [router]);
 
+  // NASA POWER Weather Observation State
+  const [weatherObs, setWeatherObs] = useState<DailyWeatherObservation | null>(null);
+
   // Real-Time Dynamic Telemetry Calculation
   const telemetry = useMemo(() => {
     return generateFieldTelemetry(
@@ -162,6 +164,11 @@ export default function BlinkFarmsApp() {
       false
     );
   }, [currentLat, currentLon, currentFieldName]);
+
+  // Unified Farm Vitals (Single Source of Truth)
+  const unifiedVitals = useMemo(() => {
+    return buildUnifiedFarmVitals(telemetry, weatherObs, currentAreaFeddan, lang);
+  }, [telemetry, weatherObs, currentAreaFeddan, lang]);
 
   // Real-Time Dynamic Field Memory ($F_{state}$)
   const fieldMemory = useMemo(() => {
@@ -439,176 +446,29 @@ export default function BlinkFarmsApp() {
               />
             </div>
 
-            {/* Daily Morning Vitals (Farmer Essential KPIs) */}
+            {/* Daily Field Operations Center (Unified V2 - 4 Authoritative Decisions) */}
             <FarmerMorningVitals
               telemetry={telemetry}
+              vitals={unifiedVitals}
               areaFeddan={currentAreaFeddan}
               lang={lang}
             />
 
-            {/* Verified NASA POWER Live Observations */}
-            <NasaWeatherCard lat={currentLat} lon={currentLon} lang={lang} />
+            {/* Verified NASA POWER Live Observations & Provenance */}
+            <NasaWeatherCard
+              lat={currentLat}
+              lon={currentLon}
+              lang={lang}
+              onObsLoaded={setWeatherObs}
+              vitals={unifiedVitals}
+            />
 
-            {/* 2. THE 3 ESSENTIAL ACTION CARDS (FARMER LANGUAGE ONLY) */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {/* Card 1: Prescribed Irrigation Today */}
-              <div className="p-5 rounded-3xl bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md shadow-sm flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between text-neutral-400 text-xs mb-3">
-                    <span className="font-bold text-sm text-neutral-800 dark:text-neutral-200">
-                      {lang === 'ar' ? 'الري المطلوب اليوم' : 'Prescribed Irrigation Today'}
-                    </span>
-                    <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 flex items-center justify-center">
-                      <DropletsIcon className="w-4 h-4" />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-3xl sm:text-4xl font-extrabold text-neutral-900 dark:text-white font-mono tracking-tight">
-                        ~{Math.round(telemetry.prescribedIrrigationMm * 4.2)}
-                      </span>
-                      <span className="text-sm font-bold text-neutral-500">
-                        {lang === 'ar' ? 'م³ / فدان' : 'm³/feddan'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-4 pt-3 border-t border-black/5 dark:border-white/5 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-neutral-400 font-medium">
-                      {lang === 'ar' ? 'حالة الإرواء:' : 'Mode:'}
-                    </span>
-                    <span
-                      className={`text-xs font-bold px-2.5 py-1 rounded-xl ${
-                        telemetry.isFlashDroughtAlert
-                          ? 'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-300'
-                          : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
-                      }`}
-                    >
-                      {telemetry.isFlashDroughtAlert
-                        ? (lang === 'ar' ? '🚨 ري عاجل للإنقاذ' : '🚨 Urgent Quenching')
-                        : (lang === 'ar' ? '💧 ري عادي صيانة' : '💧 Routine Maintenance')}
-                    </span>
-                  </div>
-
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400 font-medium leading-relaxed">
-                    {lang === 'ar'
-                      ? 'مع طراوة الصباح الباكر (5:00 - 8:00 ص) أو بعد العصر'
-                      : 'Best during early morning (5:00 - 8:00 AM) or late afternoon'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Card 2: Plant Leaf Temperature */}
-              <div className="p-5 rounded-3xl bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md shadow-sm flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between text-neutral-400 text-xs mb-3">
-                    <span className="font-bold text-sm text-neutral-800 dark:text-neutral-200">
-                      {lang === 'ar' ? 'حرارة أوراق النبات' : 'Crop Leaf Temperature'}
-                    </span>
-                    <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-500 flex items-center justify-center">
-                      <SunIcon className="w-4 h-4" />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-3xl sm:text-4xl font-extrabold text-neutral-900 dark:text-white font-mono tracking-tight">
-                        {telemetry.canopyTempC}°C
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-4 pt-3 border-t border-black/5 dark:border-white/5 space-y-2.5">
-                  {/* Intuitive Color Gauge Bar Underneath */}
-                  <div className="space-y-1.5">
-                    <div className="w-full h-2 rounded-full bg-neutral-200 dark:bg-neutral-800 overflow-hidden flex">
-                      <div className="w-1/3 h-full bg-emerald-500" title="معتدلة ومبردة"></div>
-                      <div className="w-1/3 h-full bg-amber-400" title="دافية"></div>
-                      <div className="w-1/3 h-full bg-red-500" title="حرارة مرتفعة وعطش"></div>
-                    </div>
-                    <div className="flex justify-between text-[11px] font-bold">
-                      <span className={telemetry.canopyTempC <= 28 ? 'text-emerald-600 font-extrabold' : 'text-neutral-400'}>
-                        {lang === 'ar' ? 'معتدلة ومبردة 🟢' : 'Cool 🟢'}
-                      </span>
-                      <span className={telemetry.canopyTempC > 28 && telemetry.canopyTempC <= 33 ? 'text-amber-500 font-extrabold' : 'text-neutral-400'}>
-                        {lang === 'ar' ? 'دافية 🟡' : 'Warm 🟡'}
-                      </span>
-                      <span className={telemetry.canopyTempC > 33 ? 'text-red-600 font-extrabold' : 'text-neutral-400'}>
-                        {lang === 'ar' ? 'عطش وحرارة 🔴' : 'Fever 🔴'}
-                      </span>
-                    </div>
-                  </div>
-
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400 font-medium leading-relaxed">
-                    {telemetry.canopyTempC <= 28
-                      ? (lang === 'ar' ? 'الأوراق مبردة ذاتياً وتتنفس بارتياح' : 'Leaves are well-hydrated and self-cooling')
-                      : telemetry.canopyTempC <= 33
-                      ? (lang === 'ar' ? 'بداية دفء في الأوراق، راقب رطوبة الجذور' : 'Slight leaf warmth, check root moisture')
-                      : (lang === 'ar' ? 'حرارة مرتفعة، عروق النبات عطشانة ومساماته مقفلة' : 'High fever: stomata closed from moisture deficit')}
-                  </p>
-                </div>
-              </div>
-
-              {/* Card 3: Plant Respiration & Transpiration */}
-              <div className="p-5 rounded-3xl bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md shadow-sm flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between text-neutral-400 text-xs mb-3">
-                    <span className="font-bold text-sm text-neutral-800 dark:text-neutral-200">
-                      {lang === 'ar' ? 'تنفس وعرق النبات (النتح)' : 'Plant Transpiration & Respiration'}
-                    </span>
-                    <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-500 flex items-center justify-center">
-                      <LeafIcon className="w-4 h-4" />
-                    </div>
-                  </div>
-
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed">
-                    {lang === 'ar' ? 'مدى كفاءة مسام النبات في التبريد الذاتي' : 'Efficiency of leaf stomatal self-cooling'}
-                  </p>
-                </div>
-
-                <div className="mt-4 pt-3 border-t border-black/5 dark:border-white/5 space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-neutral-400 font-medium">
-                      {lang === 'ar' ? 'الحالة الحالية:' : 'Status:'}
-                    </span>
-                    <span
-                      className={`text-xs font-bold px-2.5 py-1 rounded-xl ${
-                        telemetry.currentESI >= 0.70
-                          ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
-                          : 'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-300'
-                      }`}
-                    >
-                      {telemetry.currentESI >= 0.70
-                        ? (lang === 'ar' ? 'يتنفس بكفاءة طبيعية 🟢' : 'Breathing Normally 🟢')
-                        : (lang === 'ar' ? 'اختناق وعطش 🔴' : 'Suffocating & Thirsty 🔴')}
-                    </span>
-                  </div>
-
-                  {/* Clean Visual Gauge */}
-                  <div className="w-full h-2 rounded-full bg-neutral-200 dark:bg-neutral-800 overflow-hidden">
-                    <div
-                      style={{ width: `${Math.round(telemetry.currentESI * 100)}%` }}
-                      className={`h-full rounded-full transition-all duration-500 ${
-                        telemetry.currentESI >= 0.70 ? 'bg-emerald-500' : 'bg-red-500'
-                      }`}
-                    />
-                  </div>
-
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400 font-medium leading-relaxed">
-                    {telemetry.currentESI >= 0.70
-                      ? (lang === 'ar' ? 'مسامات الورقة مفتوحة وتضخ الرطوبة بسلاسة' : 'Stomata open, healthy cooling flow')
-                      : (lang === 'ar' ? 'المسامات مقفولة لحبس المياه، النبات تحت ضغط' : 'Stomata clamped shut to preserve internal moisture')}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* 3. REAL-TIME DROUGHT THREAT GAUGE & STRESS VELOCITY */}
-            <DroughtThreatGauge telemetry={telemetry} lang={lang} />
+            {/* Real-Time Flash Drought Early Warning Radar & 14-Day Advantage */}
+            <DroughtThreatGauge
+              telemetry={telemetry}
+              vitals={unifiedVitals}
+              lang={lang}
+            />
           </div>
         )}
 
@@ -648,15 +508,16 @@ export default function BlinkFarmsApp() {
                   </button>
                 </div>
 
-                {/* The 3 Plain Farmer Soil Insights - Unboxed and Fluid */}
-                <div className="space-y-3 pt-2">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                {/* Sleek Subsoil & Soil Health Diagnostic Strip */}
+                <div className="p-4 sm:p-5 rounded-3xl bg-white/85 dark:bg-neutral-900/85 backdrop-blur-md shadow-sm border border-black/5 dark:border-white/10 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-black/5 dark:border-white/10 pb-2.5">
                     <div>
-                      <h3 className="text-base sm:text-lg font-black text-neutral-900 dark:text-white">
-                        {lang === 'ar' ? 'تشخيص سلامة باطن الأرض والتربة' : 'Subsoil Health Insights'}
+                      <h3 className="text-sm sm:text-base font-extrabold text-neutral-900 dark:text-white flex items-center gap-2">
+                        <span>🌍</span>
+                        <span>{lang === 'ar' ? 'تشخيص سلامة باطن الأرض والتربة' : 'Subsoil Health & Compaction Diagnostics'}</span>
                       </h3>
                       <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                        {lang === 'ar' ? 'رصد طبقات الأرض من الفضاء بدون حساسات أرضية' : 'Orbital subsoil diagnostics without ground probes'}
+                        {lang === 'ar' ? 'تحليل راداري لطبقات الأرض (SMAP L4 + مسبار النفاذية الهيدروليكية)' : 'Orbital subsoil diagnostics without ground probes'}
                       </p>
                     </div>
 
@@ -667,40 +528,40 @@ export default function BlinkFarmsApp() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {/* Insight 1: Subsoil Condition */}
-                    <div className="p-4 sm:p-5 rounded-3xl bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md shadow-sm">
-                      <span className="text-xs text-neutral-400 block mb-1.5 font-bold">
-                        {lang === 'ar' ? '1. حالة باطن التربة' : '1. Subsoil Condition'}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                    {/* Diagnostic 1: Hardpan Compaction */}
+                    <div className="p-3.5 rounded-2xl bg-neutral-50 dark:bg-[#16161C] border border-black/5 dark:border-white/5 space-y-1">
+                      <span className="text-[11px] font-bold text-neutral-400 block">
+                        {lang === 'ar' ? '1. كتمة باطن التربة (Hardpan)' : '1. Subsoil Hardpan'}
                       </span>
-                      <p className="text-xs sm:text-sm font-bold text-neutral-900 dark:text-white leading-relaxed">
+                      <p className="font-bold text-neutral-900 dark:text-white leading-snug">
                         {fieldMemory.hardpanDetected
-                          ? (lang === 'ar' ? 'كتمة وانضغاط في باطن الأرض يحتاج حرث تحت التربة ⚠️' : 'Subsoil compaction detected (requires deep chisel plow) ⚠️')
-                          : (lang === 'ar' ? 'نفاذية جيدة وممتازة، الجذور تتنفس بسهولة 🟢' : 'Optimal permeability, roots breathe easily 🟢')}
+                          ? (lang === 'ar' ? '⚠️ كتمة متكلسة تحتاج تفكيكاً بالجذور الوتدية (سورجم/برسيم حجازي)' : '⚠️ Caliche compaction detected (deep taproots required)')
+                          : (lang === 'ar' ? '🟢 نفاذية ممتازة وانسياب حر للجذور' : '🟢 Optimal permeability, roots breathe easily')}
                       </p>
                     </div>
 
-                    {/* Insight 2: Subsoil Moisture */}
-                    <div className="p-4 sm:p-5 rounded-3xl bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md shadow-sm">
-                      <span className="text-xs text-neutral-400 block mb-1.5 font-bold">
-                        {lang === 'ar' ? '2. رطوبة الأعماق' : '2. Deep Moisture'}
+                    {/* Diagnostic 2: Deep Moisture Reserve */}
+                    <div className="p-3.5 rounded-2xl bg-neutral-50 dark:bg-[#16161C] border border-black/5 dark:border-white/5 space-y-1">
+                      <span className="text-[11px] font-bold text-neutral-400 block">
+                        {lang === 'ar' ? '2. مخزون رطوبة الأعماق' : '2. Deep Moisture Reserve'}
                       </span>
-                      <p className="text-xs sm:text-sm font-bold text-neutral-900 dark:text-white leading-relaxed">
+                      <p className="font-bold text-neutral-900 dark:text-white leading-snug">
                         {fieldMemory.carryoverWaterFraction >= 0.5
-                          ? (lang === 'ar' ? 'مخزون رطوبة جيد في الأعماق 🟢' : 'Good deep moisture reserve 🟢')
-                          : (lang === 'ar' ? 'جفاف باطني، يحتاج ري تشبيع هادئ 🟡' : 'Subsoil moisture deficit 🟡')}
+                          ? (lang === 'ar' ? '🟢 مخزون رطوبي وفير في قاع التربة' : '🟢 Adequate deep moisture reserve')
+                          : (lang === 'ar' ? '🟡 عجز رطوبي يحتاج ري تشبيعي عميق' : '🟡 Deep moisture deficit')}
                       </p>
                     </div>
 
-                    {/* Insight 3: Salinity */}
-                    <div className="p-4 sm:p-5 rounded-3xl bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md shadow-sm">
-                      <span className="text-xs text-neutral-400 block mb-1.5 font-bold">
-                        {lang === 'ar' ? '3. الملوحة' : '3. Soil Salinity'}
+                    {/* Diagnostic 3: Salinity Risk (ECe) */}
+                    <div className="p-3.5 rounded-2xl bg-neutral-50 dark:bg-[#16161C] border border-black/5 dark:border-white/5 space-y-1">
+                      <span className="text-[11px] font-bold text-neutral-400 block">
+                        {lang === 'ar' ? '3. ملوحة التربة (ECe)' : '3. Soil Salinity Risk'}
                       </span>
-                      <p className="text-xs sm:text-sm font-bold text-neutral-900 dark:text-white leading-relaxed">
+                      <p className="font-bold text-neutral-900 dark:text-white leading-snug">
                         {fieldMemory.salinityRiskLevel === 'moderate' || fieldMemory.salinityRiskLevel === 'severe'
-                          ? (lang === 'ar' ? 'خطر تمليح، يُنصح بمحسنات وجبس زراعي 🔴' : 'Salinity risk, agricultural gypsum recommended 🔴')
-                          : (lang === 'ar' ? 'طبيعية وآمنة، لا يوجد خطر ترسبات 🟢' : 'Normal and safe, no salinity risk 🟢')}
+                          ? (lang === 'ar' ? '🔴 ترسبات ملحية: يُوصى بأسمدة سلفات وجبس زراعي' : '🔴 Salinity risk, agricultural gypsum recommended')
+                          : (lang === 'ar' ? '🟢 ملوحة طبيعية وآمنة لكافة المحاصيل' : '🟢 Safe normal salinity envelope')}
                       </p>
                     </div>
                   </div>

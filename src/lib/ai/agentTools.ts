@@ -378,6 +378,10 @@ export async function executeAgentTool(
           isSalinityCompatible,
           financialRisk,
           agronomicAdviceAr: adviceAr,
+          certifiedEgyptianCultivars: matchedCrop.egyptianProfile?.certifiedCultivars.map(c => c.nameAr) || [],
+          expectedYieldTraditional: matchedCrop.egyptianProfile ? `${matchedCrop.egyptianProfile.expectedYieldPerFeddan.average} ${matchedCrop.egyptianProfile.traditionalUnitAr}/فدان` : undefined,
+          sowingWindowDelta: matchedCrop.egyptianProfile?.sowingWindows.deltaAr,
+          seedRatePerFeddan: matchedCrop.egyptianProfile?.seedRatePerFeddan.amount,
         };
 
         return {

@@ -1,90 +1,101 @@
 'use client';
 
 import React from 'react';
-import { Language, FlashDroughtTelemetry } from '@/lib/types';
+import { Language, FlashDroughtTelemetry, UnifiedFarmVitals } from '@/lib/types';
 import ProvenanceBadge from './ProvenanceBadge';
 
 interface DroughtThreatGaugeProps {
   telemetry: FlashDroughtTelemetry;
+  vitals?: UnifiedFarmVitals;
   lang: Language;
   onQuickIrrigateClick?: () => void;
 }
 
 export default function DroughtThreatGauge({
   telemetry,
+  vitals,
   lang,
   onQuickIrrigateClick,
 }: DroughtThreatGaugeProps) {
-  // Determine threat level:
-  // 1: Normal (Canopy anomaly <= 1.0, ESI >= 0.70)
-  // 2: Watch / Early Stress (Canopy anomaly 1.1 to 2.4, ESI 0.50 to 0.69)
-  // 3: Alert / Flash Drought (Canopy anomaly >= 2.5 or telemetry.isFlashDroughtAlert)
-  const isAlert = telemetry.isFlashDroughtAlert || telemetry.canopyTempAnomalyC >= 2.5;
-  const isWatch = !isAlert && (telemetry.canopyTempAnomalyC > 1.0 || telemetry.currentESI < 0.70);
+  // Determine threat level from unified vitals or telemetry
+  const level = vitals?.flashDroughtThreat.level ?? (telemetry.isFlashDroughtAlert || telemetry.canopyTempAnomalyC >= 2.5 ? 3 : (telemetry.canopyTempAnomalyC > 1.0 || telemetry.currentESI < 0.70 ? 2 : 1));
+  const isAlert = level === 3;
+  const isWatch = level === 2;
 
-  const level = isAlert ? 3 : isWatch ? 2 : 1;
+  const deltaT = vitals?.temperature.deltaTC ?? telemetry.canopyTempAnomalyC;
+  const esiVal = vitals?.hydrology.evaporativeStressIndex ?? telemetry.currentESI;
+  const ndviVal = vitals?.flashDroughtThreat.currentNDVI ?? telemetry.currentNDVI;
 
   const getStatusText = () => {
     if (lang === 'ar') {
-      if (level === 3) return '🚨 إنذار جفاف ومضي نشط (عطش سريع)';
-      if (level === 2) return '⚠️ إجهاد حراري مبكر تحت المراقبة';
-      return '🟢 آمن ومستقر تماماً (ترطيب ممتاز)';
+      if (level === 3) return '🚨 إنذار جفاف ومضي نشط (حمى مسام المحصول)';
+      if (level === 2) return '⚠️ إجهاد حراري تحت المراقبة (بداية تباطؤ النتح)';
+      return '🟢 ترطيب مثالي وتبريد نتحي طبيعي';
     }
-    if (level === 3) return '🚨 Acute Flash Drought Shock';
-    if (level === 2) return '⚠️ Early Thermal Stress Watch';
-    return '🟢 Optimal Hydration & Normal Cooling';
+    if (level === 3) return '🚨 Acute Flash Drought Shock (Canopy Fever)';
+    if (level === 2) return '⚠️ Early Thermal Stress Watch (Transpiration Slowing)';
+    return '🟢 Optimal Hydration & Natural Transpirational Cooling';
   };
 
   const getStatusDescription = () => {
+    if (vitals?.flashDroughtThreat.warningNarrativeAr && lang === 'ar') {
+      return vitals.flashDroughtThreat.warningNarrativeAr;
+    }
+    if (vitals?.flashDroughtThreat.warningNarrativeEn && lang === 'en') {
+      return vitals.flashDroughtThreat.warningNarrativeEn;
+    }
     if (lang === 'ar') {
       if (level === 3) {
-        return 'عروق النبات عطشانة ومسامات الأوراق أغلقت لحبس المياه مما سبب حمى حرارية (+ ' +
-          telemetry.canopyTempAnomalyC.toFixed(1) +
-          '°C). إذا لم يتم الري اليوم، سيبدأ المحصول بالاصفرار المفاجئ بعد أسبوعين.';
+        return `المسام أغلقت تماماً لحبس المياه مما سبب حمى حرارية في أوراق النبات (+${deltaT.toFixed(1)}°م). الري اليوم يمنع اصفرار الأوراق وتلف المحصول المتوقع بعد 14 يوماً.`;
       }
       if (level === 2) {
-        return 'بداية ارتفاع طفيف في حرارة الأوراق مع تناقص رطوبة الأعماق. النبات ما زال يبرد نفسه لكنه يقترب من حد العطش؛ راقب جدول الري خلال 48 ساعة.';
+        return `بداية ارتفاع طفيف في حرارة الأوراق (+${deltaT.toFixed(1)}°م) مع تناقص مخزون رطوبة الجذور. النبات ما زال يبرد نفسه لكنه يقترب من حد العطش؛ راقب الري خلال 48 ساعة.`;
       }
       return 'الأوراق مبردة ذاتياً والمسامات مفتوحة تضخ المياه بسلاسة. رطوبة منطقة الجذور وفيرة ولا يوجد أي مؤشر لخطر الجفاف.';
     }
     if (level === 3) {
-      return `Canopy is feverish (+${telemetry.canopyTempAnomalyC.toFixed(1)}°C) with stomata clamped shut. Without immediate watering, visible irreversible yellowing will manifest in 14 days.`;
+      return `Canopy fever active (+${deltaT.toFixed(1)}°C) with stomata clamped shut. Quenching today prevents irreversible leaf yellowing manifesting in 14 days.`;
     }
     if (level === 2) {
-      return 'Mild canopy warming and descending subsoil moisture. Transpiration is slowing; ensure irrigation is delivered within 48 hours.';
+      return `Mild canopy warming (+${deltaT.toFixed(1)}°C) and descending root moisture. Transpiration is slowing; ensure irrigation is delivered within 48 hours.`;
     }
     return 'Stomata are open with healthy transpirational cooling. Root-zone moisture is sufficient and balanced.';
   };
 
   return (
-    <div className="p-5 sm:p-6 rounded-3xl bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md shadow-sm border border-black/5 dark:border-white/5 space-y-4">
+    <div className="p-5 sm:p-6 rounded-3xl bg-white/85 dark:bg-neutral-900/85 backdrop-blur-md shadow-sm border border-black/5 dark:border-white/10 space-y-4">
       {/* Header with Title and Provenance */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-black/5 dark:border-white/10 pb-3">
         <div className="flex items-center gap-2.5">
           <div
             className={`w-10 h-10 rounded-2xl flex items-center justify-center text-lg ${
               level === 3
-                ? 'bg-red-500/10 text-red-600 animate-pulse'
+                ? 'bg-rose-500/15 text-rose-600 animate-pulse'
                 : level === 2
-                ? 'bg-amber-500/10 text-amber-500'
-                : 'bg-emerald-500/10 text-emerald-600'
+                ? 'bg-amber-500/15 text-amber-500'
+                : 'bg-emerald-500/15 text-emerald-600'
             }`}
           >
             {level === 3 ? '🔥' : level === 2 ? '⚠️' : '💧'}
           </div>
           <div>
-            <h3 className="text-sm sm:text-base font-black text-neutral-900 dark:text-white">
-              {lang === 'ar' ? 'مؤشر خطر الجفاف والصمود المائي في الحقل' : 'Real-Time Field Drought Threat Gauge'}
+            <h3 className="text-sm sm:text-base font-extrabold text-neutral-900 dark:text-white flex items-center gap-2">
+              <span>{lang === 'ar' ? 'رادار الإنذار المبكر للجفاف الومضي والصمود المائي' : 'Flash Drought Early Warning Radar'}</span>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-bold">
+                14-DAY LEAD TIME
+              </span>
             </h3>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400">
-              {lang === 'ar' ? 'تحليل لحظي يجمع حرارة الأوراق بالأشعة تحت الحمراء ورطوبة الجذور' : 'Synthesized from ECOSTRESS thermal infrared & SMAP root moisture'}
-            </p>
+            <span className="text-xs text-neutral-500 dark:text-neutral-400">
+              {lang === 'ar'
+                ? 'رصد حمى الأوراق تحت الحمراء (ECOSTRESS) ورطوبة القاع (SMAP 30m) قبل أي اصفرار بصري'
+                : 'Synthesized from ECOSTRESS thermal infrared & SMAP 30m root moisture'}
+            </span>
           </div>
         </div>
 
         <ProvenanceBadge
           state="LIVE"
-          source="ECOSTRESS + SMAP"
+          source="ECOSTRESS + SMAP + HLS"
           resolution="70m - 30m"
           lang={lang}
         />
@@ -107,31 +118,31 @@ export default function DroughtThreatGauge({
             className={`flex-1 rounded-full transition-all duration-700 ${
               level >= 1 ? 'bg-emerald-500 shadow-sm' : 'bg-transparent opacity-20'
             }`}
-            title="آمن ومستقر"
+            title="1. ترطيب طبيعي"
           />
           <div
             className={`flex-1 rounded-full transition-all duration-700 ${
               level >= 2 ? 'bg-amber-400 shadow-sm' : 'bg-neutral-300 dark:bg-neutral-700'
             }`}
-            title="إجهاد مبكر"
+            title="2. إجهاد مبكر"
           />
           <div
             className={`flex-1 rounded-full transition-all duration-700 ${
-              level >= 3 ? 'bg-red-500 shadow-sm animate-pulse' : 'bg-neutral-300 dark:bg-neutral-700'
+              level >= 3 ? 'bg-rose-500 shadow-sm animate-pulse' : 'bg-neutral-300 dark:bg-neutral-700'
             }`}
-            title="إنذار جفاف نشط"
+            title="3. إنذار جفاف نشط"
           />
         </div>
 
         <div className="flex justify-between text-[11px] font-bold text-neutral-400 px-1">
           <span className={level === 1 ? 'text-emerald-600 font-extrabold' : ''}>
-            {lang === 'ar' ? '1. ترطيب طبيعي' : '1. Optimal'}
+            {lang === 'ar' ? '1. ترطيب طبيعي 🟢' : '1. Optimal 🟢'}
           </span>
           <span className={level === 2 ? 'text-amber-500 font-extrabold' : ''}>
-            {lang === 'ar' ? '2. إجهاد مبكر' : '2. Stress Watch'}
+            {lang === 'ar' ? '2. إجهاد مبكر 🟡' : '2. Stress Watch 🟡'}
           </span>
-          <span className={level === 3 ? 'text-red-600 font-extrabold' : ''}>
-            {lang === 'ar' ? '3. خطر جفاف ومضي' : '3. Flash Drought'}
+          <span className={level === 3 ? 'text-rose-600 font-extrabold' : ''}>
+            {lang === 'ar' ? '3. جفاف ومضي نشط 🔴' : '3. Flash Drought 🔴'}
           </span>
         </div>
       </div>
@@ -140,100 +151,81 @@ export default function DroughtThreatGauge({
       <div
         className={`p-4 rounded-2xl text-xs font-medium leading-relaxed ${
           level === 3
-            ? 'bg-red-500/10 text-red-900 dark:text-red-200 border border-red-500/20'
+            ? 'bg-rose-500/10 text-rose-900 dark:text-rose-200 border border-rose-500/20'
             : level === 2
             ? 'bg-amber-500/10 text-amber-900 dark:text-amber-200 border border-amber-500/20'
             : 'bg-emerald-500/10 text-emerald-900 dark:text-emerald-200 border border-emerald-500/20'
         }`}
       >
-        <div className="flex items-start gap-2">
-          <span className="text-sm shrink-0 mt-0.5">💡</span>
+        <div className="flex items-start gap-2.5">
+          <span className="text-base shrink-0 mt-0.5">💡</span>
           <div className="space-y-1">
-            <span className="font-bold block">
-              {lang === 'ar' ? 'ماذا يعني هذا لحقلك الآن؟' : 'What this means for your field right now:'}
+            <span className="font-extrabold block text-xs sm:text-sm">
+              {lang === 'ar' ? 'التشخيص الزراعي الفوري لحقلك:' : 'Real-Time Agronomic Diagnosis:'}
             </span>
             <p>{getStatusDescription()}</p>
           </div>
         </div>
       </div>
 
-      {/* 4 Real-Time Diagnostic Chips */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
-        {/* Metric 1: Canopy Fever Anomaly */}
-        <div className="p-3 rounded-2xl bg-neutral-50 dark:bg-neutral-800/60 flex flex-col justify-between">
-          <span className="text-[11px] text-neutral-400 font-bold">
-            {lang === 'ar' ? 'حمى حرارة الأوراق' : 'Canopy Fever Anomaly'}
-          </span>
-          <div className="flex items-baseline gap-1 mt-1">
-            <span
-              className={`text-xl font-black font-mono ${
-                telemetry.canopyTempAnomalyC > 2.0
-                  ? 'text-red-600'
-                  : telemetry.canopyTempAnomalyC > 0.8
-                  ? 'text-amber-500'
-                  : 'text-emerald-600'
-              }`}
-            >
-              +{telemetry.canopyTempAnomalyC.toFixed(1)}°C
+      {/* The 14-Day Early Warning Advantage Box (Why ESI Beats Optical NDVI) */}
+      <div className="p-4 rounded-2xl bg-neutral-50 dark:bg-[#16161C] border border-black/5 dark:border-white/5 space-y-2.5">
+        <div className="flex items-center justify-between text-xs font-extrabold text-neutral-900 dark:text-white">
+          <div className="flex items-center gap-2">
+            <span>⏱️</span>
+            <span>
+              {lang === 'ar'
+                ? 'السبق العلمي لـ BlinkFarms: رصد العطش قبل اصفرار الأوراق بـ 14 يوماً'
+                : 'Scientific Lead Time: Detecting Stress 14 Days Ahead of Leaf Yellowing'}
             </span>
           </div>
-          <span className="text-[10px] text-neutral-400 mt-0.5">
-            {telemetry.canopyTempAnomalyC > 2.0
-              ? (lang === 'ar' ? 'حمى حرارية خطيرة' : 'Severe fever')
-              : (lang === 'ar' ? 'حرارة فسيولوجية آمنة' : 'Safe range')}
+          <span className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md">
+            ECOSTRESS vs NDVI
           </span>
         </div>
 
-        {/* Metric 2: Root Moisture */}
-        <div className="p-3 rounded-2xl bg-neutral-50 dark:bg-neutral-800/60 flex flex-col justify-between">
-          <span className="text-[11px] text-neutral-400 font-bold">
-            {lang === 'ar' ? 'رطوبة منطقة الجذور' : 'Root Moisture'}
-          </span>
-          <div className="flex items-baseline gap-1 mt-1">
-            <span className="text-xl font-black text-blue-600 font-mono">
-              ~{Math.round(telemetry.rootZoneMoistureMm)}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 text-xs">
+          <div className="p-3 rounded-xl bg-white/70 dark:bg-black/30 border border-black/5 dark:border-white/5 space-y-1">
+            <span className="text-neutral-400 font-bold block text-[11px]">
+              {lang === 'ar' ? '1. مؤشر الإجهاد التبخري (ESI)' : '1. Evaporative Stress (ESI)'}
             </span>
-            <span className="text-[10px] font-bold text-neutral-400">mm</span>
+            <div className="text-lg font-black font-mono text-neutral-900 dark:text-white">
+              {esiVal.toFixed(2)}
+            </div>
+            <p className="text-[10px] text-neutral-500">
+              {esiVal >= 0.70
+                ? (lang === 'ar' ? 'المسام مفتوحة تفرز رطوبة النتح' : 'Stomata open, transpirational cooling active')
+                : (lang === 'ar' ? 'إغلاق نتحي فوري لحبس الماء' : 'Stomata clamped to prevent desiccation')}
+            </p>
           </div>
-          <span className="text-[10px] text-neutral-400 mt-0.5">
-            {telemetry.rootZoneMoistureMm < 25 ? (lang === 'ar' ? 'مستوى حرج' : 'Critical') : (lang === 'ar' ? 'مستوى كافٍ' : 'Adequate')}
-          </span>
-        </div>
 
-        {/* Metric 3: Stress Velocity */}
-        <div className="p-3 rounded-2xl bg-neutral-50 dark:bg-neutral-800/60 flex flex-col justify-between">
-          <span className="text-[11px] text-neutral-400 font-bold">
-            {lang === 'ar' ? 'سرعة انهيار الرطوبة' : 'Stress Velocity (7d)'}
-          </span>
-          <div className="flex items-baseline gap-1 mt-1">
-            <span
-              className={`text-xl font-black font-mono ${
-                telemetry.deltaESI7d < -0.15 ? 'text-red-600' : 'text-neutral-700 dark:text-neutral-300'
-              }`}
-            >
-              {telemetry.deltaESI7d.toFixed(2)}
+          <div className="p-3 rounded-xl bg-white/70 dark:bg-black/30 border border-black/5 dark:border-white/5 space-y-1">
+            <span className="text-neutral-400 font-bold block text-[11px]">
+              {lang === 'ar' ? '2. الخضار البصري بالأقمار (NDVI)' : '2. Optical Greenness (NDVI)'}
             </span>
-            <span className="text-[10px] font-bold text-neutral-400">/wk</span>
+            <div className="text-lg font-black font-mono text-emerald-600">
+              {ndviVal.toFixed(2)}
+            </div>
+            <p className="text-[10px] text-neutral-500">
+              {lang === 'ar'
+                ? 'ما زال يبدو أخضر بالعين والأقمار العادية (تأخر 14 يوماً)'
+                : 'Deceptively green on standard optical satellites (14d lag)'}
+            </p>
           </div>
-          <span className="text-[10px] text-neutral-400 mt-0.5">
-            {telemetry.deltaESI7d < -0.15 ? (lang === 'ar' ? 'جفاف ومضي متسارع' : 'Flash desiccation') : (lang === 'ar' ? 'معدل هبوط طبيعي' : 'Normal depletion')}
-          </span>
-        </div>
 
-        {/* Metric 4: Lead Time or Quench Action */}
-        <div className="p-3 rounded-2xl bg-neutral-50 dark:bg-neutral-800/60 flex flex-col justify-between">
-          <span className="text-[11px] text-neutral-400 font-bold">
-            {lang === 'ar' ? 'النافذة الزمنية للإنقاذ' : 'Early Save Window'}
-          </span>
-          <div className="flex items-baseline gap-1 mt-1">
-            <span className="text-xl font-black text-emerald-600 font-mono">
-              {level === 3 ? '14' : '30+'}
+          <div className="p-3 rounded-xl bg-white/70 dark:bg-black/30 border border-black/5 dark:border-white/5 space-y-1">
+            <span className="text-neutral-400 font-bold block text-[11px]">
+              {lang === 'ar' ? '3. مكسب المزارع الزمني' : '3. Farmer Decision Lead Time'}
             </span>
-            <span className="text-[10px] font-bold text-neutral-400">{lang === 'ar' ? 'يوماً' : 'days'}</span>
+            <div className="text-lg font-black font-mono text-blue-600">
+              {level === 3 ? '+14' : '+30'} {lang === 'ar' ? 'يوماً كسب' : 'days lead'}
+            </div>
+            <p className="text-[10px] text-neutral-500">
+              {lang === 'ar'
+                ? 'إمكانية إنقاذ المحصول بالري الفوري قبل فوات الأوان'
+                : 'Time window to quench parcel before irreversible cell collapse'}
+            </p>
           </div>
-          <span className="text-[10px] text-neutral-400 mt-0.5">
-            {lang === 'ar' ? 'قبل اصفرار الورق' : 'Before visual browning'}
-          </span>
         </div>
       </div>
     </div>
