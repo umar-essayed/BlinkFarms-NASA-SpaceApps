@@ -174,12 +174,26 @@ export interface FlashDroughtTelemetry {
   }>;
 }
 
+export interface ToolInvocation {
+  id?: string;
+  name: string;
+  labelAr: string;
+  labelEn: string;
+  status: 'running' | 'success' | 'error';
+  input?: any;
+  output?: any;
+  summaryAr?: string;
+  summaryEn?: string;
+}
+
 export interface ChatMessage {
   id: string;
   sender: 'user' | 'assistant';
   timestamp: string;
   text?: string;
   content?: string;
+  toolsUsed?: ToolInvocation[];
+  learnedMemory?: string[];
   suggestedAction?: {
     actionType: 'show_alert' | 'view_rotations' | 'change_preferences' | 'irrigate_now';
     labelAr: string;

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Language, ChatMessage } from '@/lib/types';
 import MarkdownMessage from '@/components/MarkdownMessage';
+import ToolExecutionBadge from '@/components/ToolExecutionBadge';
 import { SendIcon } from '@/components/Icons';
 import LiveVoiceOverlay from '@/components/LiveVoiceOverlay';
 import PwaInstallPrompt from '@/components/PwaInstallPrompt';
@@ -304,28 +305,37 @@ export default function DedicatedChatPage() {
       });
 
       const data = await res.json();
-      let rawBotReply = data.reply || (lang === 'ar' ? 'تم استلام استفسارك يا طيب.' : 'Query processed.');
+      let rawBotReply = data.reply || (lang === 'ar' ? 'تم استلام استفسارك يا هندسة.' : 'Query processed.');
 
       // Extract and save central memory tags [MEMORY: key = value]
+      const learnedList: string[] = Array.isArray(data.learnedMemory) ? [...data.learnedMemory] : [];
       const memMatches = rawBotReply.match(/\[MEMORY:\s*(.*?)\]/g);
       if (memMatches) {
-        let currentMem: string[] = JSON.parse(localStorage.getItem('blinkfarms_central_memory') || '[]');
         memMatches.forEach((mStr: string) => {
           const item = mStr.replace(/\[MEMORY:\s*|\]/g, '').trim();
-          if (item && !currentMem.includes(item)) {
-            currentMem.push(item);
+          if (item && !learnedList.includes(item)) {
+            learnedList.push(item);
           }
+        });
+      }
+
+      if (learnedList.length > 0) {
+        let currentMem: string[] = JSON.parse(localStorage.getItem('blinkfarms_central_memory') || '[]');
+        learnedList.forEach((item) => {
+          if (!currentMem.includes(item)) currentMem.push(item);
         });
         localStorage.setItem('blinkfarms_central_memory', JSON.stringify(currentMem));
         setCentralMemory(currentMem);
-        rawBotReply = rawBotReply.replace(/\[MEMORY:\s*(.*?)\]/g, '').trim();
       }
+      rawBotReply = rawBotReply.replace(/\[MEMORY:\s*(.*?)\]/g, '').trim();
 
       const botMsg: ChatMessage = {
         id: `bot_${Date.now()}`,
         sender: 'assistant',
         content: rawBotReply,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        toolsUsed: data.invokedTools || [],
+        learnedMemory: learnedList,
       };
 
       const finalMessages = [...currentMessages, botMsg];
@@ -546,7 +556,34 @@ export default function DedicatedChatPage() {
                       : 'bg-[#16161C] text-neutral-100 border border-white/10 rounded-bl-xs'
                   }`}
                 >
+                  {/* Tool Execution Badges (If internal engines were invoked) */}
+                  {m.sender === 'assistant' && m.toolsUsed && m.toolsUsed.length > 0 && (
+                    <div className="mb-2 pb-2 border-b border-white/10 space-y-1.5">
+                      <div className="flex items-center gap-1.5 text-[10px] font-bold text-neutral-400">
+                        <span>⚡</span>
+                        <span>{lang === 'ar' ? 'الأدوات والمحركات المفعلة:' : 'Invoked Engines & Tools:'}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {m.toolsUsed.map((tool, idx) => (
+                          <ToolExecutionBadge key={idx} tool={tool} lang={lang} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <MarkdownMessage content={m.content || ''} />
+
+                  {/* Learned Memory Notification Badge */}
+                  {m.sender === 'assistant' && m.learnedMemory && m.learnedMemory.length > 0 && (
+                    <div className="mt-2 pt-1.5 border-t border-white/10 flex items-center gap-1.5 text-[10px] text-emerald-400 font-medium">
+                      <span>🧠</span>
+                      <span>
+                        {lang === 'ar'
+                          ? `تم حفظ في ذاكرة الحقل: ${m.learnedMemory.join(' • ')}`
+                          : `Saved to Field Memory: ${m.learnedMemory.join(' • ')}`}
+                      </span>
+                    </div>
+                  )}
                   
                   <div className="flex items-center justify-between mt-1.5 pt-1 border-t border-white/10">
                     {m.sender === 'assistant' ? (
@@ -576,7 +613,7 @@ export default function DedicatedChatPage() {
               </div>
             ))}
 
-            {/* Clean 3-dots typing loader */}
+            {/* Clean typing loader with dynamic Tool Calling status */}
             {isChatLoading && (
               <div className="flex gap-2.5 items-center justify-start">
                 <img
@@ -584,10 +621,15 @@ export default function DedicatedChatPage() {
                   alt="BlinkAI"
                   className="w-7 h-7 rounded-full object-cover border border-emerald-500/40 shadow-sm shrink-0 animate-pulse"
                 />
-                <div className="bg-[#16161C] border border-white/10 rounded-2xl px-4 py-3 shadow-sm flex items-center gap-1.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+                <div className="bg-[#16161C] border border-white/10 rounded-2xl px-3.5 py-2.5 shadow-sm flex items-center gap-2">
+                  <div className="flex items-center gap-1">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </div>
+                  <span className="text-[11px] font-semibold text-neutral-400 animate-pulse">
+                    {lang === 'ar' ? 'جاري فحص رادار ناسا وتشغيل الأدوات الذكية...' : 'Analyzing NASA data & running crop engines...'}
+                  </span>
                 </div>
               </div>
             )}
