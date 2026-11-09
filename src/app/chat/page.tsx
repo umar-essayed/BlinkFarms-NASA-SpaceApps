@@ -347,7 +347,7 @@ export default function DedicatedChatPage() {
   return (
     <div
       dir={lang === 'ar' ? 'rtl' : 'ltr'}
-      className="flex h-[100dvh] max-h-[100dvh] w-full bg-[#0A0A0C] text-[#F5F5F7] overflow-hidden font-sans select-none"
+      className="fixed inset-0 w-full h-full overflow-hidden bg-[#0A0A0C] text-[#F5F5F7] font-sans select-none flex"
     >
       {/* =========================================================================
           1. CHATGPT-LIKE COLLAPSIBLE SIDEBAR
@@ -484,7 +484,7 @@ export default function DedicatedChatPage() {
       {/* =========================================================================
           2. MAIN CHAT WORKSPACE (STRICTLY ONE SCREEN - NO SCROLLBAR OUTSIDE)
          ========================================================================= */}
-      <main className="flex-1 flex flex-col h-full overflow-hidden min-w-0 bg-[#0A0A0C]">
+      <main className="flex-1 flex flex-col h-full min-h-0 overflow-hidden min-w-0 bg-[#0A0A0C]">
         {/* Top Header Bar */}
         <header className="h-12 px-3 sm:px-5 bg-[#121216]/90 backdrop-blur-md border-b border-white/10 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
@@ -524,7 +524,7 @@ export default function DedicatedChatPage() {
         </header>
 
         {/* Messages List Area (Scrolling ONLY here) */}
-        <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-3.5 scrollbar-thin">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 sm:p-5 space-y-3.5 scrollbar-thin">
           <div className="max-w-2xl mx-auto space-y-3.5">
             {activeSession?.messages.map((m) => (
               <div
@@ -611,8 +611,8 @@ export default function DedicatedChatPage() {
           </div>
         )}
 
-        {/* Fixed Bottom Input Bar (Sticky above bottom of screen, zero white gap) */}
-        <div className="p-2.5 sm:p-3.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-[#121216] border-t border-white/10 shrink-0">
+        {/* Fixed Bottom Input Bar (Clean snug fit, zero empty space) */}
+        <div className="p-2 sm:p-2.5 bg-[#121216] border-t border-white/10 shrink-0">
           <form
             onSubmit={(e) => {
               e.preventDefault();
