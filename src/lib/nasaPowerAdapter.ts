@@ -56,7 +56,12 @@ export async function fetchNasaPowerDaily(
     }
   }
 
-  const url = `https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M,T2M_MAX,T2M_MIN,RH2M,ALLSKY_SFC_SW_DWN,WS2M,PRECTOTCORR&community=AG&longitude=${validLon.toFixed(4)}&latitude=${validLat.toFixed(4)}&start=${startStr}&end=${endStr}&format=JSON`;
+  const apiKey =
+    process.env.NASA_API_KEY ||
+    process.env.NEXT_PUBLIC_NASA_API_KEY ||
+    'CfJTjDCpHGhcjmj6zkzrPhzBRhjTCjTff9tjPRB9';
+
+  const url = `https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M,T2M_MAX,T2M_MIN,RH2M,ALLSKY_SFC_SW_DWN,WS2M,PRECTOTCORR&community=AG&longitude=${validLon.toFixed(4)}&latitude=${validLat.toFixed(4)}&start=${startStr}&end=${endStr}&format=JSON&api_key=${apiKey}`;
 
   try {
     const controller = new AbortController();
@@ -187,5 +192,56 @@ function generateRegionalClimatologyFallback(lat: number, lon: number): DailyWea
     solar_rad_wm2: createEstRecord(isSummer ? 480 : 320, 'W/m²', 'Solar Radiation (Estimated)'),
     wind_speed_ms: createEstRecord(2.8, 'm/s', 'Wind Speed (Estimated)'),
     precipitation_mm: createEstRecord(0.0, 'mm/day', 'Precipitation (Estimated)'),
+  };
+}
+
+/**
+ * Dynamically computes atmospheric VPD, slope of vapor pressure Delta,
+ * net radiation Rn, and FAO-56 Penman-Monteith reference evapotranspiration ET0.
+ */
+export function calculateAtmosphericVitals(
+  tMean: number,
+  tMax: number,
+  tMin: number,
+  rhPct: number,
+  solarRadWm2: number,
+  windSpeedMs: number,
+  lat: number = 30.0
+) {
+  // 1. Saturated vapor pressure es (kPa)
+  const esMax = 0.6108 * Math.exp((17.27 * tMax) / (tMax + 237.3));
+  const esMin = 0.6108 * Math.exp((17.27 * tMin) / (tMin + 237.3));
+  const es = (esMax + esMin) / 2.0;
+
+  // 2. Actual vapor pressure ea (kPa)
+  const ea = es * (Math.max(1.0, Math.min(100.0, rhPct)) / 100.0);
+  const vpdKpa = Math.max(0.01, es - ea);
+
+  // 3. Slope of vapor pressure curve Delta (kPa/°C)
+  const deltaSlope = (4098.0 * (0.6108 * Math.exp((17.27 * tMean) / (tMean + 237.3)))) / Math.pow(tMean + 237.3, 2);
+
+  // 4. Psychrometric constant gamma ~ 0.066 kPa/°C
+  const gammaPsy = 0.0665;
+
+  // 5. Net radiation Rn (W/m²)
+  // Albedo 0.23 for standard green crop; net radiation is approx 60-70% of downward solar during daytime
+  const netSolarWm2 = solarRadWm2 * (1.0 - 0.23);
+  const rNetWm2 = Math.max(10.0, netSolarWm2 * 0.72);
+  const rNetMjM2Day = (rNetWm2 * 86400) / 1000000;
+
+  // 6. FAO-56 Penman-Monteith ET0 (mm/day)
+  const numRad = 0.408 * deltaSlope * rNetMjM2Day;
+  const numAero = gammaPsy * (900.0 / (tMean + 273.16)) * windSpeedMs * (es - ea);
+  const den = deltaSlope + gammaPsy * (1.0 + 0.34 * windSpeedMs);
+  const et0MmDay = Math.max(0.5, (numRad + numAero) / den);
+
+  return {
+    esKpa: Number(es.toFixed(3)),
+    eaKpa: Number(ea.toFixed(3)),
+    vpdKpa: Number(vpdKpa.toFixed(3)),
+    deltaKpaC: Number(deltaSlope.toFixed(4)),
+    gammaKpaC: Number(gammaPsy.toFixed(4)),
+    rNetWm2: Number(rNetWm2.toFixed(1)),
+    et0MmDay: Number(et0MmDay.toFixed(2)),
   };
 }

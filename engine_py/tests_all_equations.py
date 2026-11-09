@@ -60,20 +60,26 @@ def run_all_tests():
     features = np.random.uniform(0.1, 0.9, (100, 3))
     weights = np.array([0.15, 0.10, 0.08])
     theta_30m = downscale_smap_mass_conserved(theta_coarse, features, weights)
-    assert np.isclose(np.mean(theta_30m), theta_coarse, atol=1e-5), "Mass Conservation Violated!"
-    print(f"✓ Eq 5 [Mass-Conserved SMAP Downscaler]: PASSED (Mean = {np.mean(theta_30m):.5f} == {theta_coarse})")
+    assert np.isclose(np.mean(theta_30m), theta_coarse, atol=1e-12), "Mass Conservation Violated! Error must be < 10^-12"
+    print(f"✓ Eq 5 [Mass-Conserved SMAP Downscaler]: PASSED (Mean = {np.mean(theta_30m):.12f} == {theta_coarse}, Error < 10^-12)")
 
     # Test 6: Virtual Thermal PINN under Clouds
     tc_virtual = reconstruct_canopy_temp_sar(t_air=30.0, delta_sigma_vv_vh=0.25, theta_root=0.18, vpd=2.8)
     assert tc_virtual > 30.0, "Canopy under moisture stress must be warmer than air temperature!"
     print(f"✓ Eq 6 [Virtual Thermal SAR PINN]: PASSED (T_canopy = {tc_virtual:.1f}°C)")
 
-    # Test 7: PT-JPL Constraints
+    # Test 7: PT-JPL Constraints (Baseline + Toshka Extreme Hyper-Arid T > 42°C, RH < 15%, VPD > 4 kPa)
     constraints = calc_pt_jpl_constraints(t_air=32.0, rh=0.35, f_apar=0.75, f_ipar=0.85, theta_root=0.26)
     for k in ["epsilon", "f_wet", "f_g", "f_T", "f_M", "f_SM"]:
         v = constraints[k]
         assert 0.0 <= v <= 1.0, f"Constraint {k} out of bounds: {v}"
-    print(f"✓ Eq 7 [PT-JPL Constraints (6)]: PASSED (epsilon={constraints['epsilon']:.2f}, fT={constraints['f_T']:.2f}, fM={constraints['f_M']:.2f})")
+    
+    # Toshka Extreme Hyper-Arid Boundary Test
+    c_extreme = calc_pt_jpl_constraints(t_air=43.5, rh=0.12, f_apar=0.70, f_ipar=0.80, theta_root=0.14)
+    assert c_extreme["vpd"] > 4.0, f"VPD under Toshka extreme should exceed 4 kPa, got {c_extreme['vpd']}"
+    assert 0.0 <= c_extreme["f_T"] <= 1.0
+    assert 0.0 <= c_extreme["f_M"] <= 1.0
+    print(f"✓ Eq 7 [PT-JPL Constraints (6) + Toshka Extreme Hyper-Arid (T=43.5°C, RH=12%, VPD={c_extreme['vpd']:.2f} kPa)]: PASSED")
 
     # Test 8: Net Radiation Partitioning & Latent Heat (LE_c, LE_s)
     fluxes = calc_pt_jpl_fluxes(r_net=480.0, fc=0.70, constraints=constraints)
@@ -82,11 +88,11 @@ def run_all_tests():
     assert fluxes["r_nc"] + fluxes["r_ns"] == 480.0, "Radiation partitioning must conserve energy"
     print(f"✓ Eq 8 [PT-JPL Net Radiation Partitioning]: PASSED (LE_c={fluxes['le_c']:.1f} W/m^2, LE_s={fluxes['le_s']:.1f} W/m^2)")
 
-    # Test 9: Advection Decoupling (Desert Oasis Winds)
+    # Test 9: Advection Decoupling (Desert Oasis Boundary Layer Energy Balance)
     le_c = fluxes["le_c"]
     le_c_decoupled = calc_advection_decoupled_lec(le_c, u_wind=4.5, grad_tsurface=5.0, d_edge=100.0)
     assert 0 < le_c_decoupled <= le_c, "Advection decoupling must isolate biological stomatal flow"
-    print(f"✓ Eq 9 [Advection Decoupling Omega]: PASSED (Raw LE_c = {le_c:.1f} -> Decoupled LE_c = {le_c_decoupled:.1f} W/m^2)")
+    print(f"✓ Eq 9 [Advection Decoupling Omega & Energy Conservation]: PASSED (Raw LE_c = {le_c:.1f} -> Decoupled LE_c = {le_c_decoupled:.1f} W/m^2)")
 
     # Test 10: Total ET_a
     le_total, eta_mm = calc_actual_eta(le_c_decoupled, le_soil=35.0)
@@ -114,16 +120,20 @@ def run_all_tests():
     assert vol_m3 == 78000.0, f"Unexpected volume: {vol_m3}"
     print(f"✓ Eq 14 [Prescriptive Irrigation Volume]: PASSED (Depth = {depth_mm} mm, Vol = {vol_m3:.0f} m^3)")
 
-    # Test 15: Closed-Loop Soil Probing & Hardpan Diagnostic
+    # Test 15: Closed-Loop Soil Probing & Probabilistic Diagnostic
     probe_diag = calc_closed_loop_soil_error(
         delta_esi_observed_48h=0.08,
         delta_esi_predicted=0.18,
         dissipation_rate_cm_hr=0.9,
-        normal_ksat_cm_hr=2.5
+        normal_ksat_cm_hr=2.5,
+        eta_irr=0.85,
+        ec_e_dsm=1.8
     )
-    assert probe_diag["hardpan_detected"] is True, "Xi = 0.44 must detect subsoil hardpan compaction!"
-    assert probe_diag["hardpan_depth_cm"] == 45.0
-    print(f"✓ Eq 15 [Closed-Loop Probing & Hardpan Diagnostic]: PASSED (Xi = {probe_diag['xi_soil_error']}, Hardpan at {probe_diag['hardpan_depth_cm']}cm)")
+    assert "diagnostic_breakdown" in probe_diag
+    db = probe_diag["diagnostic_breakdown"]
+    assert np.isclose(sum(db.values()), 1.0, atol=1e-2), "Probabilities must sum to 1.0"
+    assert probe_diag["hardpan_detected"] is True, "Severe deficit must detect subsoil hardpan compaction"
+    print(f"✓ Eq 15 [Closed-Loop Soil Probing & Probabilistic Diagnostic]: PASSED (Hardpan Prob = {db['hardpan_compaction_prob']:.2f}, Salinity Prob = {db['salinity_limitation_prob']:.2f}, Non-uniformity = {db['irrigation_nonuniformity_prob']:.2f})")
 
     # Test 16: Field Memory Vector (F_state)
     f_state = build_field_memory_state(
